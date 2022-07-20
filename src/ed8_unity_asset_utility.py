@@ -52,6 +52,18 @@ def parse_uvb(filepath):
 			pos += 1
 		return data_decoded
 
+shader_name_to_basename = {
+	"ED8/Cold Steel Shader/Cutout (Grabpass)" : "ED8_Cutout (Grabpass).shader",
+	"ED8/Cold Steel Shader/Cutout (Outline)" : "ED8_Cutout (Outline).shader",
+	"ED8/Cold Steel Shader/Cutout" : "ED8_Cutout.shader",
+	"ED8/Cold Steel Shader/Opaque (Grabpass)" : "ED8_Default (Grabpass).shader",
+	"ED8/Cold Steel Shader/Opaque (Outline)" : "ED8_Default (Outline).shader",
+	"ED8/Cold Steel Shader/Opaque" : "ED8_Default.shader",
+	"ED8/Cold Steel Shader/Transparent (Grabpass)" : "ED8_Transparent (Grabpass).shader",
+	"ED8/Cold Steel Shader/Transparent (Outline)" : "ED8_Transparent (Outline).shader",
+	"ED8/Cold Steel Shader/Transparent" : "ED8_Transparent.shader",
+}
+
 def save_unity_mat(config_struct):
 	import os
 	import re
@@ -123,6 +135,8 @@ def save_unity_mat(config_struct):
 	# Just copy variables for now
 	basename_to_guid_model = basename_to_guid_texture
 	basename_to_projectpath_model = basename_to_projectpath_texture
+	basename_to_guid_shader = basename_to_guid_texture
+	basename_to_projectpath_shader = basename_to_projectpath_texture
 
 	basename_to_path_inf = {}
 	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_inf_path"], basename_to_path_inf, ".inf")
@@ -312,15 +326,16 @@ def save_unity_mat(config_struct):
 								texture_changed = True
 							continue
 					if texture_changed:
-						backup_count = 0
-						while os.path.isfile(meta_path + ".bak" + str(backup_count)):
-							backup_count += 1
-						os.rename(meta_path, meta_path + ".bak" + str(backup_count))
+						if not config_struct["dry_run"]:
+							backup_count = 0
+							while os.path.isfile(meta_path + ".bak" + str(backup_count)):
+								backup_count += 1
+							os.rename(meta_path, meta_path + ".bak" + str(backup_count))
 
-						with open(meta_path, "w", encoding="utf-8") as f:
-							for line in meta_png_content:
-								if line != "":
-									f.write(line + "\n")
+							with open(meta_path, "w", encoding="utf-8") as f:
+								for line in meta_png_content:
+									if line != "":
+										f.write(line + "\n")
 					else:
 						debug_log("Texture unchanged")
 				else:
@@ -351,11 +366,42 @@ def save_unity_mat(config_struct):
 	material_name_to_guid = {}
 	for v in material_objs:
 		effectvariant_dict = None
-		shader_keywords = ""
+		shader_keywords_list = []
+		shader_keywords_str = ""
 		if v["m_effectVariantIndex"] != None:
 			effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]
 			if effect_variant_path in effectvariant_fullpath_to_switches:
-				shader_keywords = (" ").join(effectvariant_fullpath_to_switches[effect_variant_path])
+				shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path]
+				shader_keywords_str = (" ").join(shader_keywords_list)
+		shader_fn = ""
+		if "USE_OUTLINE" in shader_keywords_list:
+			if "ALPHA_TESTING_ENABLED" in shader_keywords_list:
+				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Outline)"]
+			elif "ALPHA_BLENDING_ENABLED" in shader_keywords_list:
+				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Outline)"]
+			else:
+				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Outline)"]
+		else:
+			if "ALPHA_TESTING_ENABLED" in shader_keywords_list:
+				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Grabpass)"]
+				else:
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout"]
+			elif "ALPHA_BLENDING_ENABLED" in shader_keywords_list:
+				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
+				else:
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
+			else:
+				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Grabpass)"]
+				else:
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque"]
+		shader_str = ""
+		shader_fn_transformed = shader_fn.lower()
+		if (shader_fn_transformed != "") and (shader_fn_transformed in basename_to_guid_shader):
+			shader_str = "{fileID: 4800000, guid: " + basename_to_guid_shader[shader_fn_transformed] + ", type: 3}"
+			debug_log("Setting shader " + shader_fn)
 
 		debug_log("Handling material " + v["mu_name"] + " (" + v["mu_materialname"] + ")")
 		matname = (v["mu_materialname"] + ".mat").lower()
@@ -383,8 +429,10 @@ def save_unity_mat(config_struct):
 					paramtype = "Colors"
 					continue
 				if paramtype == "":
-					if line.startswith("  m_ShaderKeywords: ") and shader_keywords != "":
-						material_content_rewrite.append("  m_ShaderKeywords: " + shader_keywords)
+					if line.startswith("  m_ShaderKeywords: ") and shader_keywords_str != "":
+						material_content_rewrite.append("  m_ShaderKeywords: " + shader_keywords_str)
+					elif line.startswith("  m_Shader: ") and shader_str != "":
+						material_content_rewrite.append("  m_Shader: " + shader_str)
 					else:
 						material_content_rewrite.append(line)
 				elif paramtype == "TexEnvs":
@@ -519,15 +567,16 @@ def save_unity_mat(config_struct):
 			for item in sorted(material_content_colors.keys()):
 				material_content_rewrite.append("    - " + item + ": " + material_content_colors[item])
 
-			backup_count = 0
-			while os.path.isfile(fullpath + ".bak" + str(backup_count)):
-				backup_count += 1
-			os.rename(fullpath, fullpath + ".bak" + str(backup_count))
+			if not config_struct["dry_run"]:
+				backup_count = 0
+				while os.path.isfile(fullpath + ".bak" + str(backup_count)):
+					backup_count += 1
+				os.rename(fullpath, fullpath + ".bak" + str(backup_count))
 
-			with open(fullpath, "w", encoding="utf-8") as f:
-				for line in material_content_rewrite:
-					if line != "":
-						f.write(line + "\n")
+				with open(fullpath, "w", encoding="utf-8") as f:
+					for line in material_content_rewrite:
+						if line != "":
+							f.write(line + "\n")
 		else:
 			debug_log("Material .mat not found")
 
@@ -565,7 +614,7 @@ def save_unity_mat(config_struct):
 						meta_dae_content_rewrite.append("      assembly: UnityEngine.CoreModule")
 						meta_dae_content_rewrite.append("      name: " + x)
 						meta_dae_content_rewrite.append("    second: {fileID: 2100000, guid: " + material_name_to_guid[x] + ", type: 2}")
-		if True:
+		if not config_struct["dry_run"]:
 			backup_count = 0
 			while os.path.isfile(meta_path + ".bak" + str(backup_count)):
 				backup_count += 1
@@ -594,6 +643,13 @@ def standalone_main():
 	parser.add_argument("input_file",
 		type=str, 
 		help="The input .material.json file.")
+	parser.add_argument("--dry-run",
+		type=str,
+		default=str(False),
+		help=textwrap.dedent('''\
+			Do not output or modify any files.
+		''')
+		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-path",
 		type=str,
 		default="",
@@ -641,6 +697,7 @@ def standalone_main():
 			Debug saving material configuration.
 			This option can be used to determine when files are not found or variables are not set correctly.
 			This will create a .matsetdebug.txt file
+			Not affected by the --dry-run command line argument.
 		''')
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-compress-textures",
@@ -656,6 +713,7 @@ def standalone_main():
 
 	config_struct = {}
 	config_struct["input_file"] = args.input_file
+	config_struct["dry_run"] = args.dry_run.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_path"] = args.save_material_configuration_to_unity_metadata_path
 	config_struct["save_material_configuration_to_unity_metadata_texture_path"] = args.save_material_configuration_to_unity_metadata_texture_path
 	config_struct["save_material_configuration_to_unity_metadata_inf_path"] = args.save_material_configuration_to_unity_metadata_inf_path
