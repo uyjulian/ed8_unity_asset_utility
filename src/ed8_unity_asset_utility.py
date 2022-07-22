@@ -590,17 +590,31 @@ def save_unity_mat(config_struct):
 				else:
 					debug_log("Color " + str(item) + " not found")
 
-			material_content_rewrite.append("    m_TexEnvs:")
-			for item in sorted(material_content_texenvs.keys()):
-				material_content_rewrite.append("    - " + item + ":")
-				for line in material_content_texenvs[item]:
-					material_content_rewrite.append(line)
-			material_content_rewrite.append("    m_Floats:")
-			for item in sorted(material_content_floats.keys()):
-				material_content_rewrite.append("    - " + item + ": " + material_content_floats[item])
-			material_content_rewrite.append("    m_Colors:")
-			for item in sorted(material_content_colors.keys()):
-				material_content_rewrite.append("    - " + item + ": " + material_content_colors[item])
+			if False:
+				material_content_rewrite.append("    m_TexEnvs:")
+				for item in sorted(material_content_texenvs.keys()):
+					material_content_rewrite.append("    - " + item + ":")
+					for line in material_content_texenvs[item]:
+						material_content_rewrite.append(line)
+				material_content_rewrite.append("    m_Floats:")
+				for item in sorted(material_content_floats.keys()):
+					material_content_rewrite.append("    - " + item + ": " + material_content_floats[item])
+				material_content_rewrite.append("    m_Colors:")
+				for item in sorted(material_content_colors.keys()):
+					material_content_rewrite.append("    - " + item + ": " + material_content_colors[item])
+			else:
+				material_content_rewrite.append("    m_TexEnvs:")
+				for item in sorted(possible_material_texenvs.keys()):
+					material_content_rewrite.append("    - " + item + ":")
+					material_content_rewrite.append(possible_material_texenvs[item])
+					material_content_rewrite.append("        m_Scale: {x: 1, y: 1}")
+					material_content_rewrite.append("        m_Offset: {x: 0, y: 0}")
+				material_content_rewrite.append("    m_Floats:")
+				for item in sorted(possible_material_floats.keys()):
+					material_content_rewrite.append("    - " + item + ": " + possible_material_floats[item])
+				material_content_rewrite.append("    m_Colors:")
+				for item in sorted(possible_material_colors.keys()):
+					material_content_rewrite.append("    - " + item + ": " + possible_material_colors[item])
 
 			if not config_struct["dry_run"]:
 				backup_count = 0
