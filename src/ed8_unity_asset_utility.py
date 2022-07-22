@@ -118,9 +118,10 @@ def save_unity_mat(config_struct):
 						out_fullpath_dict[os.path.basename(file).lower()[:-5]] = str(file)
 					debug_log("GUID for " + str(file) + ": " + guid)
 
-	basename_to_path = {}
+	basename_to_guid_mat = {}
+	basename_to_projectpath_mat = {}
 	
-	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_path)
+	readdir_meta_to_guid_and_fullpath(config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
 
 
 	basename_to_guid_texture = {}
@@ -146,6 +147,40 @@ def save_unity_mat(config_struct):
 
 	basename_to_path_effect_json = {}
 	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_effect_json_path"], basename_to_path_effect_json, ".effect.json")
+
+	def get_guid_for_path(in_filename, in_path, in_guid_dict, in_fullpath_dict):
+		import uuid
+		in_filename_basename = os.path.basename(in_filename).lower()
+		in_filename_basename_normalized = in_filename_basename.lower()
+		if in_filename_basename_normalized in in_guid_dict:
+			return in_guid_dict[in_filename_basename_normalized]
+		new_uuid = str(uuid.uuid4().hex)
+
+		lns = []
+		lns.append("fileFormatVersion: 2")
+		lns.append("guid: " + new_uuid)
+		lns.append("NativeFormatImporter:")
+		lns.append("  externalObjects: {}")
+		lns.append("  mainObjectFileID: 2100000")
+		lns.append("  userData: ")
+		lns.append("  assetBundleName: ")
+		lns.append("  assetBundleVariant: ")
+
+		full_path = in_path + "/" + in_filename_basename + ".meta"
+		meta_path = full_path + ".meta"
+		if not config_struct["dry_run"]:
+			backup_count = 0
+			while os.path.isfile(meta_path + ".bak" + str(backup_count)):
+				backup_count += 1
+			os.rename(meta_path, meta_path + ".bak" + str(backup_count))
+
+			with open(meta_path, "w", encoding="utf-8") as f:
+				for line in meta_png_content:
+					if line != "":
+						f.write(line + "\n")
+		in_fullpath_dict[in_filename_basename_normalized] = full_path
+		in_guid_dict[in_filename_basename_normalized] = new_uuid
+		return new_uuid
 
 	uvb_info = {}
 	gameid_to_parameters = {}
@@ -405,9 +440,9 @@ def save_unity_mat(config_struct):
 
 		debug_log("Handling material " + v["mu_name"] + " (" + v["mu_materialname"] + ")")
 		matname = (v["mu_materialname"] + ".mat").lower()
-		if matname in basename_to_path:
-			fullpath = basename_to_path[matname]
-			material_name_to_guid[v["mu_materialname"]] = basename_to_guid_texture[matname]
+		if matname in basename_to_projectpath_mat:
+			fullpath = basename_to_projectpath_mat[matname]
+			material_name_to_guid[v["mu_materialname"]] = get_guid_for_path(matname, config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
 			material_content = ""
 			with open(fullpath, "r", encoding="utf-8") as f:
 				material_content = f.read().split("\n")
