@@ -711,14 +711,24 @@ def standalone_main():
 
 	args = parser.parse_args()
 
+	def set_path(dic, in_key, in_path):
+		import os
+		new_path = ""
+
+		if in_path != "":
+			new_path = os.path.realpath(in_path)
+			if not os.path.isdir(new_path):
+				raise Exception("Path passed in for " + in_key + " is not existent")
+		dic[in_key] = new_path
+
 	config_struct = {}
 	config_struct["input_file"] = args.input_file
 	config_struct["dry_run"] = args.dry_run.lower() == "true"
-	config_struct["save_material_configuration_to_unity_metadata_path"] = args.save_material_configuration_to_unity_metadata_path
-	config_struct["save_material_configuration_to_unity_metadata_texture_path"] = args.save_material_configuration_to_unity_metadata_texture_path
-	config_struct["save_material_configuration_to_unity_metadata_inf_path"] = args.save_material_configuration_to_unity_metadata_inf_path
-	config_struct["save_material_configuration_to_unity_metadata_uvb_path"] = args.save_material_configuration_to_unity_metadata_uvb_path
-	config_struct["save_material_configuration_to_unity_metadata_effect_json_path"] = args.save_material_configuration_to_unity_metadata_effect_json_path
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_path", args.save_material_configuration_to_unity_metadata_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_path", args.save_material_configuration_to_unity_metadata_texture_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_inf_path", args.save_material_configuration_to_unity_metadata_inf_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_uvb_path", args.save_material_configuration_to_unity_metadata_uvb_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_effect_json_path", args.save_material_configuration_to_unity_metadata_effect_json_path)
 	config_struct["save_material_configuration_to_unity_metadata_debug"] = args.save_material_configuration_to_unity_metadata_debug.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
 
