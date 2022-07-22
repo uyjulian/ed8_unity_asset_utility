@@ -250,7 +250,7 @@ def save_unity_mat(config_struct):
 						if uvb_type is not None:
 							for xx in uvb_parsed:
 								if xx[0] == 7:
-									parameter_for_shader_uvb[uvb_type] = "{r: " + str(xx[1][0] * u_flip) + ", g: " + str(xx[1][1] * v_flip) + ", b: 0, a: 0}"
+									parameter_for_shader_uvb[uvb_type] = [xx[1][0] * u_flip, xx[1][1] * v_flip, 0, 0]
 									break
 
 	texture_fullpath_to_sampler = {}
@@ -505,9 +505,9 @@ def save_unity_mat(config_struct):
 				if True:
 					if type(parameter_value) is str:
 						if parameter_value in texture_fullpath_to_guid:
-							possible_material_texenvs[transformed_parameter_name] = R"        m_Texture: {fileID: 2800000, guid: " + texture_fullpath_to_guid[parameter_value] + ", type: 3}"
+							possible_material_texenvs[transformed_parameter_name] = R"{fileID: 2800000, guid: " + texture_fullpath_to_guid[parameter_value] + ", type: 3}"
 						else:
-							possible_material_texenvs[transformed_parameter_name] = R"        m_Texture: {fileID: 0}"
+							possible_material_texenvs[transformed_parameter_name] = R"{fileID: 0}"
 							if len(texture_fullpath_to_guid) > 0:
 								debug_log("Texture is not found (" + parameter_value + ")")
 							else:
@@ -528,7 +528,7 @@ def save_unity_mat(config_struct):
 							param_float = parameter_value[0]
 							if key == "WindyGrassSpeed":
 								param_float *= 2
-							possible_material_floats[transformed_parameter_name] = str(param_float)
+							possible_material_floats[transformed_parameter_name] = param_float
 							debug_log("Mapped float " + key + " in shader parameters")
 						else:
 							debug_log("Did not map float: Parameter length is too long (" + str(len(parameter_value)) + ")")
@@ -552,7 +552,7 @@ def save_unity_mat(config_struct):
 						if key == "WindyGrassDirection":
 							param_g *= -1
 						if arr_len in [2, 3, 4]:
-							possible_material_colors[transformed_parameter_name] = "{r: " + str(param_r) + ", g: " + str(param_g) + ", b: " + str(param_b) + ", a: " + str(param_a) + "}"
+							possible_material_colors[transformed_parameter_name] = [param_r, param_g, param_b, param_a]
 							debug_log("Mapped color " + key + " in shader parameters")
 						else:
 							debug_log("Did not map color: Array length is too long (" + str(arr_len) + ")")
@@ -571,21 +571,22 @@ def save_unity_mat(config_struct):
 
 			for item in sorted(possible_material_texenvs.keys()):
 				if item in material_content_texenvs:
-					material_content_texenvs[item][0] = possible_material_texenvs[item]
+					material_content_texenvs[item][0] = "        m_Texture: " + possible_material_texenvs[item]
 					debug_log("Texenv " + str(item) + " found and set")
 				else:
 					debug_log("Texenv " + str(item) + " not found")
 
 			for item in sorted(possible_material_floats.keys()):
 				if item in material_content_floats:
-					material_content_floats[item] = possible_material_floats[item]
+					material_content_floats[item] = str(possible_material_floats[item])
 					debug_log("Float " + str(item) + " found and set")
 				else:
 					debug_log("Float " + str(item) + " not found")
 
 			for item in sorted(possible_material_colors.keys()):
 				if item in material_content_colors:
-					material_content_colors[item] = possible_material_colors[item]
+					indexed_item = possible_material_colors[item]
+					material_content_colors[item] = "{r: " + str(indexed_item[0]) + ", g: " + str(indexed_item[1]) + ", b: " + str(indexed_item[2]) + ", a: " + str(indexed_item[3]) + "}"
 					debug_log("Color " + str(item) + " found and set")
 				else:
 					debug_log("Color " + str(item) + " not found")
@@ -606,15 +607,16 @@ def save_unity_mat(config_struct):
 				material_content_rewrite.append("    m_TexEnvs:")
 				for item in sorted(possible_material_texenvs.keys()):
 					material_content_rewrite.append("    - " + item + ":")
-					material_content_rewrite.append(possible_material_texenvs[item])
+					material_content_rewrite.append("        m_Texture: " + possible_material_texenvs[item])
 					material_content_rewrite.append("        m_Scale: {x: 1, y: 1}")
 					material_content_rewrite.append("        m_Offset: {x: 0, y: 0}")
 				material_content_rewrite.append("    m_Floats:")
 				for item in sorted(possible_material_floats.keys()):
-					material_content_rewrite.append("    - " + item + ": " + possible_material_floats[item])
+					material_content_rewrite.append("    - " + item + ": " + str(possible_material_floats[item]))
 				material_content_rewrite.append("    m_Colors:")
 				for item in sorted(possible_material_colors.keys()):
-					material_content_rewrite.append("    - " + item + ": " + possible_material_colors[item])
+					indexed_item = possible_material_colors[item]
+					material_content_rewrite.append("    - " + item + ": " + "{r: " + str(indexed_item[0]) + ", g: " + str(indexed_item[1]) + ", b: " + str(indexed_item[2]) + ", a: " + str(indexed_item[3]) + "}")
 
 			if not config_struct["dry_run"]:
 				backup_count = 0
