@@ -115,7 +115,7 @@ def save_unity_mat(config_struct):
 							break
 					if guid != "":
 						out_guid_dict[os.path.basename(file).lower()[:-5]] = guid
-						out_fullpath_dict[os.path.basename(file).lower()[:-5]] = str(file)
+						out_fullpath_dict[os.path.basename(file).lower()[:-5]] = str(file)[:-5]
 					debug_log("GUID for " + str(file) + ": " + guid)
 
 	basename_to_guid_mat = {}
@@ -282,7 +282,7 @@ def save_unity_mat(config_struct):
 				found_texture_path = basename_noext + ".dds"
 			if found_texture_path is not None:
 				texture_fullpath_to_guid[v["m_id"]] = basename_to_guid_texture[found_texture_path]
-				meta_path = basename_to_projectpath_texture[found_texture_path]
+				meta_path = basename_to_projectpath_texture[found_texture_path] + ".meta"
 				debug_log("Handling texture " + str(v["m_id"]))
 				if v["m_id"] in texture_fullpath_to_sampler:
 					samplerstate = texture_fullpath_to_sampler[v["m_id"]]
@@ -624,7 +624,7 @@ def save_unity_mat(config_struct):
 	if basename_noext + ".glb.fbx" in basename_to_guid_model:
 		found_model_path = basename_noext + ".glb.fbx"
 	if found_model_path is not None:
-		meta_path = basename_to_projectpath_model[found_model_path]
+		meta_path = basename_to_projectpath_model[found_model_path] + ".meta"
 		debug_log("Handling model " + str(found_model_path))
 		meta_dae_content = []
 		with open(meta_path, "r", encoding="utf-8") as f:
