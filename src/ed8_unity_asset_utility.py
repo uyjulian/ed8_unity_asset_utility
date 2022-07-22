@@ -656,6 +656,7 @@ def standalone_main():
 		help=textwrap.dedent('''\
 			Set this to a path to save material configuration to unity .mat files.
 			The old .mat files will be backed up before saving.
+			The path specified by this argument needs to be in the Assets directory of the Unity project.
 		''')
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-texture-path",
@@ -664,6 +665,7 @@ def standalone_main():
 		help=textwrap.dedent('''\
 			Set this to a path containing .png.meta, .dds.meta, .fbx.meta, and .shader.meta files.
 			If the string is empty, the above option will be used for the path instead.
+			The path specified by this argument needs to be in the Assets directory of the Unity project.
 		''')
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-inf-path",
@@ -672,6 +674,7 @@ def standalone_main():
 		help=textwrap.dedent('''\
 			Set this to a path containing .inf files.
 			If the string is empty, the information contained in the file will not be inserted.
+			The path specified by this argument does not need to be in the Assets directory of the Unity project.
 		''')
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-uvb-path",
@@ -680,6 +683,7 @@ def standalone_main():
 		help=textwrap.dedent('''\
 			Set this to a path containing .uvb files.
 			If the string is empty, the information contained in the file will not be inserted.
+			The path specified by this argument does not need to be in the Assets directory of the Unity project.
 		''')
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-effect-json-path",
@@ -688,6 +692,7 @@ def standalone_main():
 		help=textwrap.dedent('''\
 			Set this to a path containing .effect.json files.
 			If the string is empty, the information contained in the file will not be inserted.
+			The path specified by this argument does not need to be in the Assets directory of the Unity project.
 		''')
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-debug",
