@@ -214,28 +214,28 @@ def save_unity_mat(config_struct):
 						u_flip = 100
 						v_flip = 100
 						for xx in uvb_parsed:
-							if xx[0] == 17:
-								if xx[1][0] == 0:
+							if xx[0] == 17: # uv_target
+								if xx[1][0] == 0: # tex1
 									uvb_type = "_TexCoordOffset" # TODO: verify
 									u_flip = 100
 									v_flip = -100
-								elif xx[1][0] == 1:
+								elif xx[1][0] == 1: # tex
 									uvb_type = "_TexCoordOffset"
 									u_flip = 100
 									v_flip = -100
-								elif xx[1][0] == 2:
+								elif xx[1][0] == 2: # proj
 									uvb_type = "_ProjectionScroll"
 									u_flip = -100
 									v_flip = 100
-								elif xx[1][0] == 4:
+								elif xx[1][0] == 4: # muv
 									uvb_type = "_TexCoordOffset2"
 									u_flip = 100
 									v_flip = -100
-								elif xx[1][0] == 8:
+								elif xx[1][0] == 8: # muv2
 									uvb_type = "_TexCoordOffset3"
 									u_flip = 100
 									v_flip = -100
-								elif xx[1][0] == 16:
+								elif xx[1][0] == 16: # dudv
 									uvb_type = "_DuDvScroll"
 									u_flip = 100
 									v_flip = -100
@@ -250,7 +250,7 @@ def save_unity_mat(config_struct):
 							v_flip = -100
 						if uvb_type is not None:
 							for xx in uvb_parsed:
-								if xx[0] == 7:
+								if xx[0] == 7: # uv_ofs_dt
 									parameter_for_shader_uvb[uvb_type] = [xx[1][0] * u_flip, xx[1][1] * v_flip, 0, 0]
 									break
 
