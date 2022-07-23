@@ -432,7 +432,7 @@ def save_unity_mat(config_struct):
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Grabpass)"]
 				else:
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque"]
-		shader_str = ""
+		shader_str = "{fileID: 0}"
 		shader_fn_transformed = shader_fn.lower()
 		if (shader_fn_transformed != "") and (shader_fn_transformed in basename_to_guid_shader):
 			shader_str = "{fileID: 4800000, guid: " + basename_to_guid_shader[shader_fn_transformed] + ", type: 3}"
@@ -443,52 +443,7 @@ def save_unity_mat(config_struct):
 		if matname in basename_to_projectpath_mat:
 			fullpath = basename_to_projectpath_mat[matname]
 			material_name_to_guid[v["mu_materialname"]] = get_guid_for_path(matname, config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
-			material_content = ""
-			with open(fullpath, "r", encoding="utf-8") as f:
-				material_content = f.read().split("\n")
 			material_content_rewrite = []
-			material_content_texenvs = {}
-			material_content_texenv_last = []
-			material_content_texenv_last_name = ""
-			material_content_floats = {}
-			material_content_colors = {}
-			paramtype = ""
-			for line in material_content:
-				if line == "    m_TexEnvs:":
-					paramtype = "TexEnvs"
-					continue
-				elif line == "    m_Floats:":
-					paramtype = "Floats"
-					continue
-				elif line == "    m_Colors:":
-					paramtype = "Colors"
-					continue
-				if paramtype == "":
-					if line.startswith("  m_ShaderKeywords: ") and shader_keywords_str != "":
-						material_content_rewrite.append("  m_ShaderKeywords: " + shader_keywords_str)
-					elif line.startswith("  m_Shader: ") and shader_str != "":
-						material_content_rewrite.append("  m_Shader: " + shader_str)
-					else:
-						material_content_rewrite.append(line)
-				elif paramtype == "TexEnvs":
-					if line.startswith("    - "):
-						if (len(material_content_texenv_last) > 0) and (len(material_content_texenv_last_name) > 0):
-							material_content_texenvs[material_content_texenv_last_name] = material_content_texenv_last
-							material_content_texenv_last = []
-						material_content_texenv_last_name = line[6:-1]
-					else:
-						material_content_texenv_last.append(line)
-				elif paramtype == "Floats":
-					colon_pos = line.find(":")
-					if line.startswith("    - ") and colon_pos != 0:
-						material_content_floats[line[6:colon_pos]] = line[colon_pos + 2:]
-				elif paramtype == "Colors":
-					colon_pos = line.find(":")
-					if line.startswith("    - ") and colon_pos != 0:
-						material_content_colors[line[6:colon_pos]] = line[colon_pos + 2:]
-			if (len(material_content_texenv_last) > 0) and (len(material_content_texenv_last_name) > 0):
-				material_content_texenvs[material_content_texenv_last_name] = material_content_texenv_last
-				material_content_texenv_last = []
 
 			parameters = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_shaderParameters"]
 			gamematid = None
@@ -854,41 +809,27 @@ def save_unity_mat(config_struct):
 				possible_material_colors["_GameMaterialDiffuse"] = [1.00, 1.00, 1.00, 1.00]
 				possible_material_colors["_GameMaterialEmission"] = [0.0, 0.0, 0.0, 0.0]
 
-			for item in sorted(possible_material_texenvs.keys()):
-				if item in material_content_texenvs:
-					material_content_texenvs[item][0] = "        m_Texture: " + possible_material_texenvs[item]
-					debug_log("Texenv " + str(item) + " found and set")
-				else:
-					debug_log("Texenv " + str(item) + " not found")
-
-			for item in sorted(possible_material_floats.keys()):
-				if item in material_content_floats:
-					material_content_floats[item] = str(possible_material_floats[item])
-					debug_log("Float " + str(item) + " found and set")
-				else:
-					debug_log("Float " + str(item) + " not found")
-
-			for item in sorted(possible_material_colors.keys()):
-				if item in material_content_colors:
-					indexed_item = possible_material_colors[item]
-					material_content_colors[item] = "{r: " + str(indexed_item[0]) + ", g: " + str(indexed_item[1]) + ", b: " + str(indexed_item[2]) + ", a: " + str(indexed_item[3]) + "}"
-					debug_log("Color " + str(item) + " found and set")
-				else:
-					debug_log("Color " + str(item) + " not found")
-
-			if False:
-				material_content_rewrite.append("    m_TexEnvs:")
-				for item in sorted(material_content_texenvs.keys()):
-					material_content_rewrite.append("    - " + item + ":")
-					for line in material_content_texenvs[item]:
-						material_content_rewrite.append(line)
-				material_content_rewrite.append("    m_Floats:")
-				for item in sorted(material_content_floats.keys()):
-					material_content_rewrite.append("    - " + item + ": " + material_content_floats[item])
-				material_content_rewrite.append("    m_Colors:")
-				for item in sorted(material_content_colors.keys()):
-					material_content_rewrite.append("    - " + item + ": " + material_content_colors[item])
-			else:
+			if True:
+				material_content_rewrite.append("%YAML 1.1")
+				material_content_rewrite.append("%TAG !u! tag:unity3d.com,2011:")
+				material_content_rewrite.append("--- !u!21 &2100000")
+				material_content_rewrite.append("Material:")
+				material_content_rewrite.append("  serializedVersion: 6")
+				material_content_rewrite.append("  m_ObjectHideFlags: 0")
+				material_content_rewrite.append("  m_CorrespondingSourceObject: {fileID: 0}")
+				material_content_rewrite.append("  m_PrefabInstance: {fileID: 0}")
+				material_content_rewrite.append("  m_PrefabAsset: {fileID: 0}")
+				material_content_rewrite.append("  m_Name: " + v["mu_materialname"])
+				material_content_rewrite.append("  m_Shader: " + shader_str)
+				material_content_rewrite.append("  m_ShaderKeywords: " + shader_keywords_str)
+				material_content_rewrite.append("  m_LightmapFlags: 4")
+				material_content_rewrite.append("  m_EnableInstancingVariants: 0")
+				material_content_rewrite.append("  m_DoubleSidedGI: 0")
+				material_content_rewrite.append("  m_CustomRenderQueue: -1")
+				material_content_rewrite.append("  stringTagMap: {}")
+				material_content_rewrite.append("  disabledShaderPasses: []")
+				material_content_rewrite.append("  m_SavedProperties:")
+				material_content_rewrite.append("    serializedVersion: 3")
 				material_content_rewrite.append("    m_TexEnvs:")
 				for item in sorted(possible_material_texenvs.keys()):
 					material_content_rewrite.append("    - " + item + ":")
