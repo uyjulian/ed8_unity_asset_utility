@@ -17,12 +17,12 @@ def parse_uvb(filepath):
 		data = f.read(length * 4)
 		pos = 0
 		data_decoded = []
-		while pos < length:
+		while pos < (length - 3):
 			int1, = struct.unpack("I", data[pos * 4:(pos + 1) * 4])
 			float1, = struct.unpack("f", data[pos * 4:(pos + 1) * 4])
 			if int1 == 1:
-				data_decoded.append([int1, list(struct.unpack("IIII", data[(pos + 1) * 4:(pos + 5) * 4]))])
-				pos += 4
+				data_decoded.append([int1, list(struct.unpack("I", data[(pos + 1) * 4:(pos + 2) * 4]))])
+				pos += 1
 			elif int1 == 2 or int1 == 14 or int1 == 17 or int1 == 19:
 				data_decoded.append([int1, list(struct.unpack("I", data[(pos + 1) * 4:(pos + 2) * 4]))])
 				pos += 1
@@ -36,11 +36,11 @@ def parse_uvb(filepath):
 				data_decoded.append([int1, list(struct.unpack("Iffff", data[(pos + 1) * 4:(pos + 6) * 4]))])
 				pos += 5
 			elif int1 == 13:
-				data_decoded.append([int1, list(struct.unpack("f", data[(pos + 1) * 4:(pos + 2) * 4]))])
+				data_decoded.append([int1, list(struct.unpack("I", data[(pos + 1) * 4:(pos + 2) * 4]))])
 				pos += 1
 			elif int1 == 15:
-				data_decoded.append([int1, list(struct.unpack("IIIII", data[(pos + 1) * 4:(pos + 6) * 4]))])
-				pos += 5
+				data_decoded.append([int1, list(struct.unpack("III", data[(pos + 1) * 4:(pos + 4) * 4]))])
+				pos += 3
 			elif int1 == 16 or int1 == 20:
 				data_decoded.append([int1, []])
 				pos += 0
