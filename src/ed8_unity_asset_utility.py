@@ -166,16 +166,17 @@ def save_unity_mat(config_struct):
 		lns.append("  assetBundleName: ")
 		lns.append("  assetBundleVariant: ")
 
-		full_path = in_path + "/" + in_filename_basename + ".meta"
+		full_path = in_path + "/" + in_filename_basename
 		meta_path = full_path + ".meta"
 		if not config_struct["dry_run"]:
-			backup_count = 0
-			while os.path.isfile(meta_path + ".bak" + str(backup_count)):
-				backup_count += 1
-			os.rename(meta_path, meta_path + ".bak" + str(backup_count))
+			if os.path.isfile(meta_path):
+				backup_count = 0
+				while os.path.isfile(meta_path + ".bak" + str(backup_count)):
+					backup_count += 1
+				os.rename(meta_path, meta_path + ".bak" + str(backup_count))
 
 			with open(meta_path, "w", encoding="utf-8") as f:
-				for line in meta_png_content:
+				for line in lns:
 					if line != "":
 						f.write(line + "\n")
 		in_fullpath_dict[in_filename_basename_normalized] = full_path
@@ -440,9 +441,9 @@ def save_unity_mat(config_struct):
 
 		debug_log("Handling material " + v["mu_name"] + " (" + v["mu_materialname"] + ")")
 		matname = (v["mu_materialname"] + ".mat").lower()
-		if matname in basename_to_projectpath_mat:
-			fullpath = basename_to_projectpath_mat[matname]
+		if True:
 			material_name_to_guid[v["mu_materialname"]] = get_guid_for_path(matname, config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
+			fullpath = basename_to_projectpath_mat[matname]
 			material_content_rewrite = []
 
 			parameters = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_shaderParameters"]
@@ -845,10 +846,11 @@ def save_unity_mat(config_struct):
 					material_content_rewrite.append("    - " + item + ": " + "{r: " + str(indexed_item[0]) + ", g: " + str(indexed_item[1]) + ", b: " + str(indexed_item[2]) + ", a: " + str(indexed_item[3]) + "}")
 
 			if not config_struct["dry_run"]:
-				backup_count = 0
-				while os.path.isfile(fullpath + ".bak" + str(backup_count)):
-					backup_count += 1
-				os.rename(fullpath, fullpath + ".bak" + str(backup_count))
+				if os.path.isfile(fullpath):
+					backup_count = 0
+					while os.path.isfile(fullpath + ".bak" + str(backup_count)):
+						backup_count += 1
+					os.rename(fullpath, fullpath + ".bak" + str(backup_count))
 
 				with open(fullpath, "w", encoding="utf-8") as f:
 					for line in material_content_rewrite:
