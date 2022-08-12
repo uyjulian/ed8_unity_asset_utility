@@ -68,6 +68,9 @@ def save_unity_mat(config_struct):
 	import os
 	import re
 	import json
+
+	# Is sen3 and above?
+	isCS3Up = True
 	debug_list = None
 	if config_struct["save_material_configuration_to_unity_metadata_debug"]:
 		debug_list = []
@@ -408,7 +411,6 @@ def save_unity_mat(config_struct):
 			effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]
 			if effect_variant_path in effectvariant_fullpath_to_switches:
 				shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path]
-				shader_keywords_str = (" ").join(shader_keywords_list)
 		shader_fn = ""
 		if "USE_OUTLINE" in shader_keywords_list:
 			if "ALPHA_TESTING_ENABLED" in shader_keywords_list:
@@ -418,7 +420,12 @@ def save_unity_mat(config_struct):
 			else:
 				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Outline)"]
 		else:
-			if "ALPHA_TESTING_ENABLED" in shader_keywords_list:
+			if ("ALPHA_TESTING_ENABLED" in shader_keywords_list) and ("ALPHA_BLENDING_ENABLED" in shader_keywords_list):
+				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
+				else:
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
+			elif "ALPHA_TESTING_ENABLED" in shader_keywords_list:
 				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Grabpass)"]
 				else:
@@ -526,7 +533,7 @@ def save_unity_mat(config_struct):
 				debug_log("Could not detect GameMaterialID for this material")
 
 			if True:
-				# TODO: DOUBLE_SIDED, CASTS_SHADOWS_ONLY, CASTS_SHADOWS, RECEIVE_SHADOWS, _FogRangeParameters, _HemiSphereAmbientAxis
+				# TODO: DOUBLE_SIDED, CASTS_SHADOWS_ONLY, CASTS_SHADOWS, RECEIVE_SHADOWS, _FogRangeParameters, _HemiSphereAmbientAxis, _Instancing/material.enableInstancing, ints
 
 				if ("NOTHING_ENABLED" in shader_keywords_list):
 					possible_material_floats["_NothingEnabled"] = 1.0
@@ -545,7 +552,7 @@ def save_unity_mat(config_struct):
 				if ("BLEND_VERTEX_COLOR_BY_ALPHA_ENABLED" in shader_keywords_list):
 					possible_material_floats["_BlendVertexColorAlphaEnabled"] = 1.0
 
-				if ("NO_ALL_LIGHTING_ENABLED" in shader_keywords_list):
+				if ("NO_ALL_LIGHTING_ENABLED" in shader_keywords_list) or ("GLARE_EMISSION_ENABLED" in shader_keywords_list):
 					possible_material_floats["_NoAllLightingEnabled"] = 1.0
 
 				if ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list):
@@ -602,11 +609,6 @@ def save_unity_mat(config_struct):
 
 				if ("RIM_TRANSPARENCY_ENABLED" in shader_keywords_list):
 					possible_material_floats["_RimTransparencyEnabled"] = 1.0
-
-				if ("RIM_CLAMP_ENABLED" in shader_keywords_list):
-					possible_material_floats["m_start_RimClamp"] = 1.0
-					possible_material_floats["_RimClampEnabled"] = 1.0
-					possible_material_floats["m_end_RimClamp"] = 0.0
 
 				if ("TEXCOORD_OFFSET_ENABLED" in shader_keywords_list):
 					possible_material_floats["_TexcoordOffsetEnabled"] = 1.0
@@ -769,6 +771,7 @@ def save_unity_mat(config_struct):
 				if ("GLARE_MAP_ENABLED" in shader_keywords_list):
 					possible_material_floats["m_start_GlareMap"] = 1.0
 					possible_material_floats["_GlareMappingEnabled"] = 1.0
+					possible_material_floats["_GlareHilightPassEnabled"] = 1.0
 
 				if ("GLARE_HIGHTPASS_ENABLED" in shader_keywords_list):
 					possible_material_floats["_GlareHilightPassEnabled"] = 1.0
@@ -798,19 +801,64 @@ def save_unity_mat(config_struct):
 				if ("_GlareIntensity" in possible_material_floats) and (possible_material_floats["_GlareIntensity"] == 1.0):
 					if ((not "GLARE_HIGHTPASS_ENABLED" in shader_keywords_list) and (not "GLARE_MAP_ENABLED" in shader_keywords_list)):
 						possible_material_floats["_GlareIntensity"] = 0.0
+					else:
+						possible_material_floats["_GlareHilightPassEnabled"] = 1.0
 
-				possible_material_floats["_Instancing"] = 1.0
+				if isCS3Up:
+					if not ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list):
+						if not ("RIM_CLAMP_ENABLED" in shader_keywords_list):
+							shader_keywords_list.append("RIM_CLAMP_ENABLED")
+					if ("RIM_CLAMP_ENABLED" in shader_keywords_list):
+						possible_material_floats["m_start_RimClamp"] = 1.0
+						possible_material_floats["_RimClampEnabled"] = 1.0
+						possible_material_floats["m_end_RimClamp"] = 0.0
+					if not ("FLAT_AMBIENT_ENABLED" in shader_keywords_list):
+						shader_keywords_list.append("FLAT_AMBIENT_ENABLED")
+					possible_material_floats["_FlatAmbientEnabled"] = 1.0
+
 
 				# Lighting
-				possible_material_colors["_GlobalAmbientColor"] = [0.50, 0.50, 0.50, 1]
-				possible_material_colors["_HemiSphereAmbientSkyColor"] = [0.55, 0.55, 0.55, 1]
-				possible_material_colors["_HemiSphereAmbientGndColor"] = [0.55, 0.55, 0.55, 1]
-				possible_material_colors["_FogColor"] = [0.44, 0.62, 0.60, 0]
-				possible_material_floats["_FogRateClamp"] = 1
-				possible_material_colors["_GameMaterialDiffuse"] = [1.00, 1.00, 1.00, 1.00]
-				possible_material_colors["_GameMaterialEmission"] = [0.0, 0.0, 0.0, 0.0]
+				possible_material_colors["_GlobalAmbientColor"] = [0.55, 0.55, 0.55, 1.00]
+				possible_material_colors["_HemiSphereAmbientSkyColor"] = [0.55, 0.55, 0.55, 1.00]
+				possible_material_colors["_HemiSphereAmbientGndColor"] = [0.55, 0.55, 0.55, 1.00]
+				possible_material_colors["_FogColor"] = [0.00, 0.00, 0.00, 0.00]
+				possible_material_floats["_FogRateClamp"] = 1.00
+				# possible_material_colors["_GameMaterialDiffuse"] = [1.00, 1.00, 1.00, 1.00]
+				# possible_material_colors["_GameMaterialEmission"] = [0.0, 0.0, 0.0, 0.0]
 
+				## Mode 2 related stuff
+				if isCS3Up:
+					if ((not ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list)) and (not ("NO_ALL_LIGHTING_ENABLED" in shader_keywords_list)) and (not ("CARTOON_SHADING_ENABLED" in shader_keywords_list))):
+						if not ("HALF_LAMBERT_LIGHTING_ENABLED" in shader_keywords_list):
+							shader_keywords_list.append("HALF_LAMBERT_LIGHTING_ENABLED")
+						possible_material_floats["_HalfLambertLightingEnabled"] = 1.0
+					if ("RIM_LIGHTING_ENABLED" in shader_keywords_list):
+						possible_material_floats["m_start_RimLighting"] = 1.0
+						possible_material_floats["_RimLightingEnabled"] = 1.0
+						possible_material_floats["m_end_RimLighting"] = 0.0
+						if not ("RIM_CLAMP_ENABLED" in shader_keywords_list):
+							shader_keywords_list.append("RIM_CLAMP_ENABLED")
+						possible_material_floats["m_start_RimClamp"] = 1.0
+						possible_material_floats["_RimClampEnabled"] = 1.0
+						possible_material_floats["m_end_RimClamp"] = 0.0
+					if ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list) or (("_NoMainLightShadingEnabled" in possible_material_floats) and possible_material_floats["_NoMainLightShadingEnabled"] == 1.0):
+						if "RIM_CLAMP_ENABLED" in shader_keywords_list:
+							shader_keywords_list.remove("RIM_CLAMP_ENABLED")
+						possible_material_floats["m_start_RimClamp"] = 0.0
+						possible_material_floats["_RimClampEnabled"] = 0.0
+						possible_material_floats["m_end_RimClamp"] = 0.0
+					if not ("FLAT_AMBIENT_ENABLED" in shader_keywords_list):
+						shader_keywords_list.append("FLAT_AMBIENT_ENABLED")
+					possible_material_floats["_FlatAmbientEnabled"] = 1.0
+
+				if ("_GlareIntensity" in possible_material_floats) and (possible_material_floats["_GlareIntensity"] == 0.0):
+					if ((not ("GLARE_HIGHTPASS_ENABLED" in shader_keywords_list)) and (not ("GLARE_MAP_ENABLED" in shader_keywords_list)) and (not ("ALPHA_BLENDING_ENABLED" in shader_keywords_list))):
+						if not ("RECEIVE_SHADOWS" in shader_keywords_list):
+							shader_keywords_list.append("RECEIVE_SHADOWS")
+							possible_material_floats["_ReceiveShadowsEnabled"] = 1.0
 			if True:
+				shader_keywords_str = (" ").join(sorted(shader_keywords_list))
+
 				material_content_rewrite.append("%YAML 1.1")
 				material_content_rewrite.append("%TAG !u! tag:unity3d.com,2011:")
 				material_content_rewrite.append("--- !u!21 &2100000")
