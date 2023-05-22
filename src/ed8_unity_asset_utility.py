@@ -52,6 +52,84 @@ def parse_uvb(filepath):
 			pos += 1
 		return data_decoded
 
+# Utility functions for manipulating UnityYAML
+def split_indentation_level(instr):
+	str_lines = instr.split("\n")
+	filtered_lines = []
+	filtered_last_line = [None]
+	filtered_indented_lines = []
+	filtered_indented_arr = [None]
+	def deposit_indented_lines(is_last=False):
+		if is_last:
+			if filtered_indented_arr[0] == None:
+				ret = None
+				if len(filtered_indented_lines) != 0:
+					ret = "\n".join(filtered_indented_lines)
+					del filtered_indented_lines[:]
+				return ret
+		if filtered_indented_arr[0] == None:
+			filtered_indented_arr[0] = []
+		if len(filtered_indented_lines) > 0:
+			filtered_indented_arr[0].append("\n".join(filtered_indented_lines))
+			del filtered_indented_lines[:]
+		return filtered_indented_arr[0]
+
+	def deposit_lines(new_line):
+		if filtered_last_line[0] != None:
+			filtered_lines.append([filtered_last_line[0], deposit_indented_lines(True)])
+		filtered_last_line[0] = new_line
+		filtered_indented_arr[0] = None
+
+	for line in str_lines:
+		if line[0:2] == "  ":
+			filtered_indented_lines.append(line[2:])
+		elif line[0:2] == "- ":
+			deposit_indented_lines()
+			filtered_indented_lines.append(line[2:])
+		else:
+			deposit_lines(line)
+	deposit_lines(line)
+	return filtered_lines
+
+def join_indentation_level(inarr):
+	lines = []
+	for x in inarr:
+		lines.append(x[0])
+		contents = x[1]
+		if contents != None:
+			if type(contents) == str:
+				contents_lines = contents.split("\n")
+				for line in contents_lines:
+					lines.append("  " + line)
+			elif type(contents) == list:
+				for xx in contents:
+					contents_lines = xx.split("\n")
+					lines.append("- " + contents_lines[0])
+					for line in contents_lines[1:]:
+						lines.append("  " + line)
+			
+	return "\n".join(lines)
+
+def find_indentation_level(inarr, key):
+	for i in range(len(inarr)):
+		if type(inarr[i][0]) == str and inarr[i][0].startswith(key + ":"):
+			return i
+	return -1
+
+def mutate_indentation_level(inarr, dic):
+	for key in sorted(dic.keys()):
+		i = find_indentation_level(inarr, key)
+		if i == -1:
+			raise Exception("Key " + key + " not found")
+		if inarr[i][1] == None:
+			inarr[i][0] = key + ": " + dic[key]
+		elif type(inarr[i][1]) == str:
+			e_split = split_indentation_level(inarr[i][1])
+			mutate_indentation_level(e_split, dic[key])
+			inarr[i][1] = join_indentation_level(e_split)
+		elif type(inarr[i][1]) == list:
+			raise Exception("List mutation NYI")
+
 shader_name_to_basename = {
 	"ED8/Cold Steel Shader/Cutout (Grabpass)" : "ED8_Cutout (Grabpass).shader",
 	"ED8/Cold Steel Shader/Cutout (Outline)" : "ED8_Cutout (Outline).shader",
@@ -306,64 +384,47 @@ def save_unity_mat(config_struct):
 					if samplerstate["m_wrapT"] in wrap_map:
 						wrapT = wrap_map[samplerstate["m_wrapT"]]
 					texture_changed = False
-					meta_png_content = []
+					meta_png_content = ""
 					with open(meta_path, "r", encoding="utf-8") as f:
-						meta_png_content = f.read().split("\n")
-					for i in range(len(meta_png_content)):
-						if meta_png_content[i].startswith("    wrapU: "):
-							new_wrap_argument = "    wrapU: " + str(wrapS)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("    wrapV: "):
-							new_wrap_argument = "    wrapV: " + str(wrapT)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("    filterMode: "):
-							new_wrap_argument = "    filterMode: " + str(filterMode)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("    aniso: "):
-							new_wrap_argument = "    aniso: " + str(aniso)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("  alphaIsTransparency: "):
-							new_wrap_argument = "  alphaIsTransparency: " + str(alphaIsTransparency)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("    textureCompression: "):
-							new_wrap_argument = "    textureCompression: " + str(textureCompression)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("  compressionQuality: "):
-							new_wrap_argument = "  compressionQuality: " + str(compressionQuality)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("    compressionQuality: "):
-							new_wrap_argument = "    compressionQuality: " + str(compressionQuality)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
-						if meta_png_content[i].startswith("    crunchedCompression: "):
-							new_wrap_argument = "    crunchedCompression: " + str(crunchedCompression)
-							if new_wrap_argument != meta_png_content[i]:
-								meta_png_content[i] = new_wrap_argument
-								texture_changed = True
-							continue
+						meta_png_content = f.read()
+					meta_png_split_root = split_indentation_level(meta_png_content)
+					meta_png_find_TextureImporter = find_indentation_level(meta_png_split_root, "TextureImporter")
+					if meta_png_find_TextureImporter != -1:
+						meta_png_split_TextureImporter = split_indentation_level(meta_png_split_root[meta_png_find_TextureImporter][1])
+						meta_png_mutate_TextureImporter = {
+							"textureSettings" : {
+								"filterMode" : str(filterMode),
+								"aniso" : str(aniso),
+								"wrapU" : str(wrapS),
+								"wrapV" : str(wrapT),
+							},
+							"alphaIsTransparency" : str(alphaIsTransparency),
+							"compressionQuality" : str(compressionQuality),
+						}
+						mutate_indentation_level(meta_png_split_TextureImporter, meta_png_mutate_TextureImporter)
+						meta_png_find_platformSettings = find_indentation_level(meta_png_split_TextureImporter, "platformSettings")
+						if meta_png_find_platformSettings != -1:
+							meta_png_val_platformSettings = meta_png_split_TextureImporter[meta_png_find_platformSettings][1]
+							if type(meta_png_val_platformSettings) == list:
+								meta_png_mutate_platformSettings_element = {
+									"textureCompression" : str(textureCompression),
+									"compressionQuality" : str(compressionQuality),
+									"crunchedCompression" : str(crunchedCompression),
+								}
+								for ii in range(len(meta_png_val_platformSettings)):
+									platformSettings_element_split = split_indentation_level(meta_png_val_platformSettings[ii])
+									try:
+										mutate_indentation_level(platformSettings_element_split, meta_png_mutate_platformSettings_element)
+									except Exception as e:
+										print(meta_path)
+										raise e
+									meta_png_val_platformSettings[ii] = join_indentation_level(platformSettings_element_split)
+
+						meta_png_split_root[meta_png_find_TextureImporter][1] = join_indentation_level(meta_png_split_TextureImporter)
+					else:
+						debug_log("TextureImporter element not found")
+					meta_png_content_new = join_indentation_level(meta_png_split_root)
+					texture_changed = meta_png_content_new != meta_png_content
 					if texture_changed:
 						if not config_struct["dry_run"]:
 							backup_count = 0
@@ -372,9 +433,7 @@ def save_unity_mat(config_struct):
 							os.rename(meta_path, meta_path + ".bak" + str(backup_count))
 
 							with open(meta_path, "w", encoding="utf-8") as f:
-								for line in meta_png_content:
-									if line != "":
-										f.write(line + "\n")
+								f.write(meta_png_content_new)
 					else:
 						debug_log("Texture unchanged")
 				else:
