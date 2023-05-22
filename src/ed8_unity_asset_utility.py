@@ -173,8 +173,8 @@ def save_unity_mat(config_struct):
 		if in_path != "":
 			in_path = pathlib.Path(in_path)
 			for file in sorted(in_path.glob('**/*')):
-				file_name = os.path.basename(file).lower()
-				if file_ext == None or file_name.endswith(file_ext):
+				file_name = file.name.lower()
+				if (file_ext == None or file_name.endswith(file_ext)) and (not file_name.startswith("._")):
 					file_name_modified = file_name
 					if file_ext != None:
 						file_name_modified = file_name[:-(len(file_ext))]
@@ -185,7 +185,7 @@ def save_unity_mat(config_struct):
 		if in_path != "":
 			in_path_pathobj = pathlib.Path(in_path)
 			for file in sorted(in_path_pathobj.glob('**/*')):
-				if str(file).endswith(".meta"):
+				if (file.name.endswith(".meta")) and (not file.name.startswith("._")):
 					meta_contents = []
 					with open(file, "r", encoding="utf-8") as f:
 						meta_contents = f.read().split("\n")
@@ -518,7 +518,7 @@ def save_unity_mat(config_struct):
 			possible_material_floats = {}
 			possible_material_colors = {}
 			parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
-			for key in parameters_for_textures.keys():
+			for key in sorted(parameters_for_textures.keys()):
 				transformed_parameter_name = "_" + key
 				if key == "DiffuseMapSampler":
 					transformed_parameter_name = "_MainTex"
@@ -536,7 +536,7 @@ def save_unity_mat(config_struct):
 								debug_log("Texture is not mapped due to no texture .meta files found")
 					else:
 						debug_log("Did not map texture: Invalid type (" + str(type(parameter_value)) + ")")
-			for key in parameters.keys():
+			for key in sorted(parameters.keys()):
 				transformed_parameter_name = "_" + key
 				parameter_value = parameters[key]
 				if key == "DiffuseMapSampler":
@@ -583,7 +583,7 @@ def save_unity_mat(config_struct):
 			if gamematid is not None:
 				if gamematid in gameid_to_parameters:
 					gameid_to_parameters_item = gameid_to_parameters[gamematid]
-					for key in gameid_to_parameters_item.keys():
+					for key in sorted(gameid_to_parameters_item.keys()):
 						possible_material_colors[key] = gameid_to_parameters_item[key]
 						debug_log("Mapped color " + key + " in shader parameters (for GameMaterialID)")
 				else:
