@@ -413,11 +413,7 @@ def save_unity_mat(config_struct):
 								}
 								for ii in range(len(meta_png_val_platformSettings)):
 									platformSettings_element_split = split_indentation_level(meta_png_val_platformSettings[ii])
-									try:
-										mutate_indentation_level(platformSettings_element_split, meta_png_mutate_platformSettings_element)
-									except Exception as e:
-										print(meta_path)
-										raise e
+									mutate_indentation_level(platformSettings_element_split, meta_png_mutate_platformSettings_element)
 									meta_png_val_platformSettings[ii] = join_indentation_level(platformSettings_element_split)
 
 						meta_png_split_root[meta_png_find_TextureImporter][1] = join_indentation_level(meta_png_split_TextureImporter)
