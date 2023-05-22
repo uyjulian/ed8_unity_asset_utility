@@ -373,6 +373,9 @@ def save_unity_mat(config_struct):
 					filterMode = 2
 					aniso = 8
 					alphaIsTransparency = 1
+					textureFormat_Windows = 29 # RGBA Crunched DXT5
+					textureFormat_Android = 52 # ASTC 10x10
+					maxTextureSize = 1024
 					textureCompression = 0
 					compressionQuality = 100
 					crunchedCompression = 0
@@ -406,13 +409,20 @@ def save_unity_mat(config_struct):
 						if meta_png_find_platformSettings != -1:
 							meta_png_val_platformSettings = meta_png_split_TextureImporter[meta_png_find_platformSettings][1]
 							if type(meta_png_val_platformSettings) == list:
-								meta_png_mutate_platformSettings_element = {
-									"textureCompression" : str(textureCompression),
-									"compressionQuality" : str(compressionQuality),
-									"crunchedCompression" : str(crunchedCompression),
-								}
 								for ii in range(len(meta_png_val_platformSettings)):
+									meta_png_mutate_platformSettings_element = {
+										"textureCompression" : str(textureCompression),
+										"compressionQuality" : str(compressionQuality),
+										"crunchedCompression" : str(crunchedCompression),
+										"maxTextureSize" : str(maxTextureSize),
+									}
 									platformSettings_element_split = split_indentation_level(meta_png_val_platformSettings[ii])
+									meta_png_find_buildTarget = find_indentation_level(platformSettings_element_split, "buildTarget")
+									if meta_png_find_buildTarget != -1:
+										if platformSettings_element_split[meta_png_find_buildTarget][0] in ["buildTarget: DefaultTexturePlatform", "buildTarget: Standalone"]:
+											meta_png_mutate_platformSettings_element["textureFormat"] = str(textureFormat_Windows)
+										elif platformSettings_element_split[meta_png_find_buildTarget][0] in ["buildTarget: Android"]:
+											meta_png_mutate_platformSettings_element["textureFormat"] = str(textureFormat_Android)
 									mutate_indentation_level(platformSettings_element_split, meta_png_mutate_platformSettings_element)
 									meta_png_val_platformSettings[ii] = join_indentation_level(platformSettings_element_split)
 
