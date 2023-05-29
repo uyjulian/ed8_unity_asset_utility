@@ -229,6 +229,18 @@ def save_unity_mat(config_struct):
 	basename_to_path_effect_json = {}
 	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_effect_json_path"], basename_to_path_effect_json, ".effect.json")
 
+	backup_path = config_struct["backup_path"]
+
+	def do_backup_path(in_path):
+		if os.path.isfile(in_path):
+			base_backup_in_path = in_path + ".bak"
+			if backup_path != "":
+				base_backup_in_path = backup_path + "/" + os.path.basename(in_path) + ".bak"
+			backup_count = 0
+			while os.path.isfile(base_backup_in_path + str(backup_count)):
+				backup_count += 1
+			os.rename(in_path, base_backup_in_path + str(backup_count))
+
 	def get_guid_for_path(in_filename, in_path, in_guid_dict, in_fullpath_dict):
 		import uuid
 		in_filename_basename = os.path.basename(in_filename).lower()
@@ -250,12 +262,7 @@ def save_unity_mat(config_struct):
 		full_path = in_path + "/" + in_filename_basename
 		meta_path = full_path + ".meta"
 		if not config_struct["dry_run"]:
-			if os.path.isfile(meta_path):
-				backup_count = 0
-				while os.path.isfile(meta_path + ".bak" + str(backup_count)):
-					backup_count += 1
-				os.rename(meta_path, meta_path + ".bak" + str(backup_count))
-
+			do_backup_path(meta_path)
 			with open(meta_path, "w", encoding="utf-8") as f:
 				for line in lns:
 					if line != "":
@@ -433,11 +440,7 @@ def save_unity_mat(config_struct):
 					texture_changed = meta_png_content_new != meta_png_content
 					if texture_changed:
 						if not config_struct["dry_run"]:
-							backup_count = 0
-							while os.path.isfile(meta_path + ".bak" + str(backup_count)):
-								backup_count += 1
-							os.rename(meta_path, meta_path + ".bak" + str(backup_count))
-
+							do_backup_path(meta_path)
 							with open(meta_path, "w", encoding="utf-8") as f:
 								f.write(meta_png_content_new)
 					else:
@@ -959,12 +962,7 @@ def save_unity_mat(config_struct):
 					material_content_rewrite.append("    - " + item + ": " + "{r: " + str(indexed_item[0]) + ", g: " + str(indexed_item[1]) + ", b: " + str(indexed_item[2]) + ", a: " + str(indexed_item[3]) + "}")
 
 			if not config_struct["dry_run"]:
-				if os.path.isfile(fullpath):
-					backup_count = 0
-					while os.path.isfile(fullpath + ".bak" + str(backup_count)):
-						backup_count += 1
-					os.rename(fullpath, fullpath + ".bak" + str(backup_count))
-
+				do_backup_path(fullpath)
 				with open(fullpath, "w", encoding="utf-8") as f:
 					for line in material_content_rewrite:
 						if line != "":
@@ -1007,11 +1005,7 @@ def save_unity_mat(config_struct):
 						meta_dae_content_rewrite.append("      name: " + x)
 						meta_dae_content_rewrite.append("    second: {fileID: 2100000, guid: " + material_name_to_guid[x] + ", type: 2}")
 		if not config_struct["dry_run"]:
-			backup_count = 0
-			while os.path.isfile(meta_path + ".bak" + str(backup_count)):
-				backup_count += 1
-			os.rename(meta_path, meta_path + ".bak" + str(backup_count))
-
+			do_backup_path(meta_path)
 			with open(meta_path, "w", encoding="utf-8") as f:
 				for line in meta_dae_content_rewrite:
 					if line != "":
@@ -1040,6 +1034,14 @@ def standalone_main():
 		default=str(False),
 		help=textwrap.dedent('''\
 			Do not output or modify any files.
+		''')
+		)
+	parser.add_argument("--backup-path",
+		type=str,
+		default="",
+		help=textwrap.dedent('''\
+			Set this to a path of a directory to save the backup of the modified files.
+			If this is not specified, it will default to the same path of the directory of the original file.
 		''')
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-path",
@@ -1121,6 +1123,7 @@ def standalone_main():
 	config_struct = {}
 	config_struct["input_file"] = args.input_file
 	config_struct["dry_run"] = args.dry_run.lower() == "true"
+	set_path(config_struct, "backup_path", args.backup_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_path", args.save_material_configuration_to_unity_metadata_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_path", args.save_material_configuration_to_unity_metadata_texture_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_inf_path", args.save_material_configuration_to_unity_metadata_inf_path)
