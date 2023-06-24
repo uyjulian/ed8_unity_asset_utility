@@ -229,6 +229,9 @@ def save_unity_mat(config_struct):
 	basename_to_path_effect_json = {}
 	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_effect_json_path"], basename_to_path_effect_json, ".effect.json")
 
+	basename_to_path_texture_json = {}
+	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_texture_json_path"], basename_to_path_texture_json, ".texture.json")
+
 	backup_path = config_struct["backup_path"]
 
 	def do_backup_path(in_path):
@@ -363,6 +366,26 @@ def save_unity_mat(config_struct):
 	effectvariant_fullpath_to_switches = {}
 	for v in asset_reference_import_objs:
 		if v["m_targetAssetType"] == "PTexture2D":
+			texture2d_basename = os.path.basename(v["m_id"]).lower()
+			is_transparency_enabled = True
+			if texture2d_basename in basename_to_path_texture_json:
+				import json
+				texture_structure = None
+				with open(basename_to_path_texture_json[texture2d_basename], "r") as f:
+					texture_structure = json.load(f)
+				effect_switches_list = []
+				texture2d_objs = texture_structure["texture2d_list"]
+				if len(texture2d_objs) > 0:
+					texture2d_obj = texture2d_objs[0]
+					if "m_format" in texture2d_obj:
+						texture2d_obj_format = texture2d_obj["m_format"]
+						# Known formats: LA8, L8, ARGB8, ARGB8_SRGB, RGBA8, RGB565, ARGB4444, BC5, BC7, DXT1, DXT3, DXT5
+						no_transparency_formats = ["L8", "RGB565", "BC5", "DXT1"]
+						debug_log("Texture format for " + v["m_id"] + " is " + texture2d_obj_format)
+						if texture2d_obj_format in no_transparency_formats:
+							is_transparency_enabled = False
+			else:
+				debug_log("Texture file not found for " + v["m_id"])
 			basename_noext = os.path.basename(v["m_id"]).split(".", 1)[0].lower()
 			found_texture_path = None
 			if basename_noext + ".png" in basename_to_guid_texture:
@@ -386,6 +409,8 @@ def save_unity_mat(config_struct):
 					textureCompression = 0
 					compressionQuality = 100
 					crunchedCompression = 0
+					if not is_transparency_enabled:
+						textureFormat_Windows = 28 # RGB Crunched DXT1
 					if config_struct["save_material_configuration_to_unity_metadata_compress_textures"]:
 						textureCompression = 1
 						crunchedCompression = 1
@@ -1089,6 +1114,15 @@ def standalone_main():
 			The path specified by this argument does not need to be in the Assets directory of the Unity project.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-texture-json-path",
+		type=str,
+		default="",
+		help=textwrap.dedent('''\
+			Set this to a path containing .texture.json files.
+			If the string is empty, the information contained in the file will not be inserted.
+			The path specified by this argument does not need to be in the Assets directory of the Unity project.
+		''')
+		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-debug",
 		type=str,
 		default=str(False),
@@ -1129,6 +1163,7 @@ def standalone_main():
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_inf_path", args.save_material_configuration_to_unity_metadata_inf_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_uvb_path", args.save_material_configuration_to_unity_metadata_uvb_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_effect_json_path", args.save_material_configuration_to_unity_metadata_effect_json_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_json_path", args.save_material_configuration_to_unity_metadata_texture_json_path)
 	config_struct["save_material_configuration_to_unity_metadata_debug"] = args.save_material_configuration_to_unity_metadata_debug.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
 
