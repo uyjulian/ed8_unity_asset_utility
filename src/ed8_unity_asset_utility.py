@@ -582,81 +582,83 @@ def save_unity_mat(config_struct):
 						colon_pos = line.find(":")
 						if line.startswith("    - ") and colon_pos != 0:
 							possible_material_colors[line[6:colon_pos]] = [component[2:] for component in line[colon_pos + 2:][1:-1].replace(" ", "").split(",")]
-			parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
-			for key in sorted(parameters_for_textures.keys()):
-				transformed_parameter_name = "_" + key
-				if key == "DiffuseMapSampler":
-					transformed_parameter_name = "_MainTex"
-				debug_log("Handling shader parameter  " + key + "; transformed " + transformed_parameter_name)
-				parameter_value = asset_reference_import_objs[parameters_for_textures[key]]["m_id"]
-				if True:
-					if type(parameter_value) is str:
-						if parameter_value in texture_fullpath_to_guid:
-							possible_material_texenvs[transformed_parameter_name] = R"{fileID: 2800000, guid: " + texture_fullpath_to_guid[parameter_value] + ", type: 3}"
-						else:
-							possible_material_texenvs[transformed_parameter_name] = R"{fileID: 0}"
-							if len(texture_fullpath_to_guid) > 0:
-								debug_log("Texture is not found (" + parameter_value + ")")
-							else:
-								debug_log("Texture is not mapped due to no texture .meta files found")
-					else:
-						debug_log("Did not map texture: Invalid type (" + str(type(parameter_value)) + ")")
-			for key in sorted(parameters.keys()):
-				transformed_parameter_name = "_" + key
-				parameter_value = parameters[key]
-				if key == "DiffuseMapSampler":
-					transformed_parameter_name = "_MainTex"
-				debug_log("Handling shader parameter  " + key + "; transformed " + transformed_parameter_name)
-				if key == "GameMaterialID":
-					gamematid = int(parameter_value[0])
-				if True:
-					if not (type(parameter_value) is str):
-						if len(parameter_value) == 1:
-							param_float = parameter_value[0]
-							if key == "WindyGrassSpeed":
-								param_float *= 2
-							possible_material_floats[transformed_parameter_name] = param_float
-							debug_log("Mapped float " + key + " in shader parameters")
-						else:
-							debug_log("Did not map float: Parameter length is too long (" + str(len(parameter_value)) + ")")
-					else:
-						debug_log("Did not map float: Invalid type (" + str(type(parameter_value)) + ")")
-				if True:
-					if (not (type(parameter_value) is str)) and (not (type(parameter_value) is dict)):
-						arr_len = len(parameter_value)
-						param_r = 0
-						param_g = 0
-						param_b = 0
-						param_a = 0
-						if arr_len >= 1:
-							param_r = parameter_value[0]
-						if arr_len >= 2:
-							param_g = parameter_value[1]
-						if arr_len >= 3:
-							param_b = parameter_value[2]
-						if arr_len >= 4:
-							param_a = parameter_value[3]
-						if key == "WindyGrassDirection":
-							param_g *= -1
-						if arr_len in [2, 3, 4]:
-							possible_material_colors[transformed_parameter_name] = [param_r, param_g, param_b, param_a]
-							debug_log("Mapped color " + key + " in shader parameters")
-						else:
-							debug_log("Did not map color: Array length is too long (" + str(arr_len) + ")")
-					else:
-						debug_log("Did not map color: Invalid type (" + str(type(parameter_value)) + ")")
-			if gamematid is not None:
-				if gamematid in gameid_to_parameters:
-					gameid_to_parameters_item = gameid_to_parameters[gamematid]
-					for key in sorted(gameid_to_parameters_item.keys()):
-						possible_material_colors[key] = gameid_to_parameters_item[key]
-						debug_log("Mapped color " + key + " in shader parameters (for GameMaterialID)")
-				else:
-					debug_log("Could not map GameMaterialID for this material")
-			else:
-				debug_log("Could not detect GameMaterialID for this material")
 
-			if True:
+			if config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"]:
+				parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
+				for key in sorted(parameters_for_textures.keys()):
+					transformed_parameter_name = "_" + key
+					if key == "DiffuseMapSampler":
+						transformed_parameter_name = "_MainTex"
+					debug_log("Handling shader parameter  " + key + "; transformed " + transformed_parameter_name)
+					parameter_value = asset_reference_import_objs[parameters_for_textures[key]]["m_id"]
+					if True:
+						if type(parameter_value) is str:
+							if parameter_value in texture_fullpath_to_guid:
+								possible_material_texenvs[transformed_parameter_name] = R"{fileID: 2800000, guid: " + texture_fullpath_to_guid[parameter_value] + ", type: 3}"
+							else:
+								possible_material_texenvs[transformed_parameter_name] = R"{fileID: 0}"
+								if len(texture_fullpath_to_guid) > 0:
+									debug_log("Texture is not found (" + parameter_value + ")")
+								else:
+									debug_log("Texture is not mapped due to no texture .meta files found")
+						else:
+							debug_log("Did not map texture: Invalid type (" + str(type(parameter_value)) + ")")
+				for key in sorted(parameters.keys()):
+					transformed_parameter_name = "_" + key
+					parameter_value = parameters[key]
+					if key == "DiffuseMapSampler":
+						transformed_parameter_name = "_MainTex"
+					debug_log("Handling shader parameter  " + key + "; transformed " + transformed_parameter_name)
+					if key == "GameMaterialID":
+						gamematid = int(parameter_value[0])
+					if True:
+						if not (type(parameter_value) is str):
+							if len(parameter_value) == 1:
+								param_float = parameter_value[0]
+								if key == "WindyGrassSpeed":
+									param_float *= 2
+								possible_material_floats[transformed_parameter_name] = param_float
+								debug_log("Mapped float " + key + " in shader parameters")
+							else:
+								debug_log("Did not map float: Parameter length is too long (" + str(len(parameter_value)) + ")")
+						else:
+							debug_log("Did not map float: Invalid type (" + str(type(parameter_value)) + ")")
+					if True:
+						if (not (type(parameter_value) is str)) and (not (type(parameter_value) is dict)):
+							arr_len = len(parameter_value)
+							param_r = 0
+							param_g = 0
+							param_b = 0
+							param_a = 0
+							if arr_len >= 1:
+								param_r = parameter_value[0]
+							if arr_len >= 2:
+								param_g = parameter_value[1]
+							if arr_len >= 3:
+								param_b = parameter_value[2]
+							if arr_len >= 4:
+								param_a = parameter_value[3]
+							if key == "WindyGrassDirection":
+								param_g *= -1
+							if arr_len in [2, 3, 4]:
+								possible_material_colors[transformed_parameter_name] = [param_r, param_g, param_b, param_a]
+								debug_log("Mapped color " + key + " in shader parameters")
+							else:
+								debug_log("Did not map color: Array length is too long (" + str(arr_len) + ")")
+						else:
+							debug_log("Did not map color: Invalid type (" + str(type(parameter_value)) + ")")
+				if gamematid is not None:
+					if gamematid in gameid_to_parameters:
+						gameid_to_parameters_item = gameid_to_parameters[gamematid]
+						for key in sorted(gameid_to_parameters_item.keys()):
+							possible_material_colors[key] = gameid_to_parameters_item[key]
+							debug_log("Mapped color " + key + " in shader parameters (for GameMaterialID)")
+					else:
+						debug_log("Could not map GameMaterialID for this material")
+				else:
+					debug_log("Could not detect GameMaterialID for this material")
+
+			if config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"]:
 				# TODO: DOUBLE_SIDED, CASTS_SHADOWS_ONLY, CASTS_SHADOWS, RECEIVE_SHADOWS, _FogRangeParameters, _HemiSphereAmbientAxis, _Instancing/material.enableInstancing, ints
 
 				if ("NOTHING_ENABLED" in shader_keywords_list):
@@ -1179,6 +1181,20 @@ def standalone_main():
 			If previous material configuration exists already, apply it.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-apply-shader-keyword-configuration",
+		type=str,
+		default=str(True),
+		help=textwrap.dedent('''\
+			Applies the new material configuration on top of the current one based on shader keywords.
+		''')
+		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-apply-shader-parameter-configuration",
+		type=str,
+		default=str(True),
+		help=textwrap.dedent('''\
+			Applies the new material configuration on top of the current one based on shader parameters.
+		''')
+		)
 
 	args = parser.parse_args()
 
@@ -1205,6 +1221,8 @@ def standalone_main():
 	config_struct["save_material_configuration_to_unity_metadata_debug"] = args.save_material_configuration_to_unity_metadata_debug.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] = args.save_material_configuration_to_unity_metadata_apply_previous_configuration.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration.lower() == "true"
 
 	save_unity_mat(config_struct)
 
