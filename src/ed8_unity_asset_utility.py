@@ -551,6 +551,37 @@ def save_unity_mat(config_struct):
 			possible_material_texenvs = {}
 			possible_material_floats = {}
 			possible_material_colors = {}
+			if config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] and os.path.isfile(fullpath):
+				material_existing_content = []
+				with open(fullpath, "r", encoding="utf-8") as f:
+					material_existing_content = f.read().split("\n")
+				material_content_texenv_last_name = ""
+				paramtype = ""
+				for line in material_existing_content:
+					if line == "    m_TexEnvs:":
+						paramtype = "TexEnvs"
+						continue
+					elif line == "    m_Floats:":
+						paramtype = "Floats"
+						continue
+					elif line == "    m_Colors:":
+						paramtype = "Colors"
+						continue
+					if paramtype == "":
+						pass
+					elif paramtype == "TexEnvs":
+						if line.startswith("    - "):
+							material_content_texenv_last_name = line[6:-1]
+						elif line.startswith("        m_Texture: "):
+							possible_material_texenvs[material_content_texenv_last_name] = line[14:-1]
+					elif paramtype == "Floats":
+						colon_pos = line.find(":")
+						if line.startswith("    - ") and colon_pos != 0:
+							possible_material_floats[line[6:colon_pos]] = line[colon_pos + 2:]
+					elif paramtype == "Colors":
+						colon_pos = line.find(":")
+						if line.startswith("    - ") and colon_pos != 0:
+							possible_material_colors[line[6:colon_pos]] = [component[2:] for component in line[colon_pos + 2:][1:-1].replace(" ", "").split(",")]
 			parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
 			for key in sorted(parameters_for_textures.keys()):
 				transformed_parameter_name = "_" + key
@@ -1141,6 +1172,13 @@ def standalone_main():
 			If this option is disabled, it will not use Unity Crunch format.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-apply-previous-configuration",
+		type=str,
+		default=str(True),
+		help=textwrap.dedent('''\
+			If previous material configuration exists already, apply it.
+		''')
+		)
 
 	args = parser.parse_args()
 
@@ -1166,6 +1204,7 @@ def standalone_main():
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_json_path", args.save_material_configuration_to_unity_metadata_texture_json_path)
 	config_struct["save_material_configuration_to_unity_metadata_debug"] = args.save_material_configuration_to_unity_metadata_debug.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] = args.save_material_configuration_to_unity_metadata_apply_previous_configuration.lower() == "true"
 
 	save_unity_mat(config_struct)
 
