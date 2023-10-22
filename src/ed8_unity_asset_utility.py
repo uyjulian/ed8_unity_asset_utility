@@ -156,6 +156,8 @@ def save_unity_mat(config_struct):
 		if debug_list is not None:
 			debug_list.append(ln)
 
+	shader_parameter_filter = config_struct["save_material_configuration_to_unity_metadata_filter_shader_parameter"].split(",")
+
 	in_filename = config_struct["input_file"]
 
 	in_structure = None
@@ -628,7 +630,7 @@ def save_unity_mat(config_struct):
 						transformed_parameter_name = "_MainTex"
 					debug_log("Handling shader parameter  " + key + "; transformed " + transformed_parameter_name)
 					parameter_value = asset_reference_import_objs[parameters_for_textures[key]]["m_id"]
-					if True:
+					if (len(shader_parameter_filter) == 0) or (transformed_parameter_name in shader_parameter_filter):
 						if type(parameter_value) is str:
 							if parameter_value in texture_fullpath_to_guid:
 								possible_material_texenvs[transformed_parameter_name] = R"{fileID: 2800000, guid: " + texture_fullpath_to_guid[parameter_value] + ", type: 3}"
@@ -640,6 +642,8 @@ def save_unity_mat(config_struct):
 									debug_log("Texture is not mapped due to no texture .meta files found")
 						else:
 							debug_log("Did not map texture: Invalid type (" + str(type(parameter_value)) + ")")
+					else:
+						debug_log("Did not map texture: Shader parameter not in allowlist (" + str(transformed_parameter_name) + ")")
 				for key in sorted(parameters.keys()):
 					transformed_parameter_name = "_" + key
 					parameter_value = parameters[key]
@@ -648,7 +652,7 @@ def save_unity_mat(config_struct):
 					debug_log("Handling shader parameter  " + key + "; transformed " + transformed_parameter_name)
 					if key == "GameMaterialID":
 						gamematid = int(parameter_value[0])
-					if True:
+					if (len(shader_parameter_filter) == 0) or (transformed_parameter_name in shader_parameter_filter):
 						if not (type(parameter_value) is str):
 							if len(parameter_value) == 1:
 								param_float = parameter_value[0]
@@ -660,7 +664,9 @@ def save_unity_mat(config_struct):
 								debug_log("Did not map float: Parameter length is too long (" + str(len(parameter_value)) + ")")
 						else:
 							debug_log("Did not map float: Invalid type (" + str(type(parameter_value)) + ")")
-					if True:
+					else:
+						debug_log("Did not map float: Shader parameter not in allowlist (" + str(transformed_parameter_name) + ")")
+					if (len(shader_parameter_filter) == 0) or (transformed_parameter_name in shader_parameter_filter):
 						if (not (type(parameter_value) is str)) and (not (type(parameter_value) is dict)):
 							arr_len = len(parameter_value)
 							param_r = 0
@@ -684,12 +690,17 @@ def save_unity_mat(config_struct):
 								debug_log("Did not map color: Array length is too long (" + str(arr_len) + ")")
 						else:
 							debug_log("Did not map color: Invalid type (" + str(type(parameter_value)) + ")")
+					else:
+						debug_log("Did not map color: Shader parameter not in allowlist (" + str(transformed_parameter_name) + ")")
 				if gamematid is not None:
 					if gamematid in gameid_to_parameters:
 						gameid_to_parameters_item = gameid_to_parameters[gamematid]
 						for key in sorted(gameid_to_parameters_item.keys()):
-							possible_material_colors[key] = gameid_to_parameters_item[key]
-							debug_log("Mapped color " + key + " in shader parameters (for GameMaterialID)")
+							if (len(shader_parameter_filter) == 0) or (transformed_parameter_name in shader_parameter_filter):
+								possible_material_colors[key] = gameid_to_parameters_item[key]
+								debug_log("Mapped color " + key + " in shader parameters (for GameMaterialID)")
+							else:
+								debug_log("Did not map color " + key + " in shader parameters (for GameMaterialID) due to not in allowlist")
 					else:
 						debug_log("Could not map GameMaterialID for this material")
 				else:
@@ -1213,6 +1224,13 @@ def standalone_main():
 			Applies the new material configuration on top of the current one based on shader parameters.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-filter-shader-parameter",
+		type=str,
+		default="",
+		help=textwrap.dedent('''\
+			Applies the new material configuration on top of the current one only based on shader parameters passed in as comma delimited list.
+		''')
+		)
 
 	args = parser.parse_args()
 
@@ -1241,6 +1259,7 @@ def standalone_main():
 	config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] = args.save_material_configuration_to_unity_metadata_apply_previous_configuration.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_filter_shader_parameter"] = args.save_material_configuration_to_unity_metadata_filter_shader_parameter
 
 	save_unity_mat(config_struct)
 
