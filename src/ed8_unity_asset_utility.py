@@ -244,6 +244,19 @@ def save_unity_mat(config_struct):
 				backup_count += 1
 			os.rename(in_path, base_backup_in_path + str(backup_count))
 
+	def write_if_unchanged(in_path, in_contents):
+		if os.path.isfile(in_path):
+			old_contents = ""
+			with open(in_path, "r", encoding="utf-8") as f:
+				old_contents = f.read()
+			if old_contents == in_contents:
+				return
+		tmp_in_path = in_path + ".tmp"
+		with open(tmp_in_path, "w", encoding="utf-8") as f:
+			f.write(in_contents)
+		do_backup_path(in_path)
+		os.rename(tmp_in_path, in_path)
+
 	def get_guid_for_path(in_filename, in_path, in_guid_dict, in_fullpath_dict):
 		import uuid
 		in_filename_basename = os.path.basename(in_filename).lower()
@@ -265,11 +278,7 @@ def save_unity_mat(config_struct):
 		full_path = in_path + "/" + in_filename_basename
 		meta_path = full_path + ".meta"
 		if not config_struct["dry_run"]:
-			do_backup_path(meta_path)
-			with open(meta_path, "w", encoding="utf-8") as f:
-				for line in lns:
-					if line != "":
-						f.write(line + "\n")
+			write_if_unchanged(meta_path, "".join([x + "\n" for x in lns if x != ""]))
 		in_fullpath_dict[in_filename_basename_normalized] = full_path
 		in_guid_dict[in_filename_basename_normalized] = new_uuid
 		return new_uuid
@@ -465,9 +474,7 @@ def save_unity_mat(config_struct):
 					texture_changed = meta_png_content_new != meta_png_content
 					if texture_changed:
 						if not config_struct["dry_run"]:
-							do_backup_path(meta_path)
-							with open(meta_path, "w", encoding="utf-8") as f:
-								f.write(meta_png_content_new)
+							write_if_unchanged(meta_path, meta_png_content_new)
 					else:
 						debug_log("Texture unchanged")
 				else:
@@ -1039,11 +1046,7 @@ def save_unity_mat(config_struct):
 					material_content_rewrite.append("    - " + item + ": " + "{r: " + str(indexed_item[0]) + ", g: " + str(indexed_item[1]) + ", b: " + str(indexed_item[2]) + ", a: " + str(indexed_item[3]) + "}")
 
 			if not config_struct["dry_run"]:
-				do_backup_path(fullpath)
-				with open(fullpath, "w", encoding="utf-8") as f:
-					for line in material_content_rewrite:
-						if line != "":
-							f.write(line + "\n")
+				write_if_unchanged(fullpath, "".join([x + "\n" for x in material_content_rewrite if x != ""]))
 		else:
 			debug_log("Material .mat not found")
 
@@ -1082,11 +1085,7 @@ def save_unity_mat(config_struct):
 						meta_dae_content_rewrite.append("      name: " + x)
 						meta_dae_content_rewrite.append("    second: {fileID: 2100000, guid: " + material_name_to_guid[x] + ", type: 2}")
 		if not config_struct["dry_run"]:
-			do_backup_path(meta_path)
-			with open(meta_path, "w", encoding="utf-8") as f:
-				for line in meta_dae_content_rewrite:
-					if line != "":
-						f.write(line + "\n")
+			write_if_unchanged(meta_path, "".join([x + "\n" for x in meta_dae_content_rewrite if x != ""]))
 	else:
 		debug_log("Model for " + str(found_model_path) + " not found")
 
