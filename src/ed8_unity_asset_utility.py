@@ -587,21 +587,23 @@ def save_unity_mat(config_struct):
 					elif line == "    m_Colors:":
 						paramtype = "Colors"
 						continue
-					elif line[0:2] == "  " and line[3:3] != " " and (":" in line):
-						paramtype = ""
+					elif line[0:2] == "  " and line[2:3] != " " and (":" in line):
 						colon_pos = line.find(": ")
 						check_key = line[2:colon_pos]
-						if check_key in possible_material_root_attributes:
-							possible_material_root_attributes[check_key] = line[colon_pos + 2:]
-						else:
-							debug_log("Unknown material root key " + check_key + " (" + v["mu_materialname"] + ")")
+						if check_key != "m_SavedProperties":
+							paramtype = ""
+							if check_key in possible_material_root_attributes:
+								possible_material_root_attributes[check_key] = line[colon_pos + 2:]
+							else:
+								debug_log("Unknown material root key " + check_key + " (" + v["mu_materialname"] + ")")
 					if paramtype == "":
 						pass
 					elif paramtype == "TexEnvs":
+						colon_pos = line.find(":")
 						if line.startswith("    - "):
-							material_content_texenv_last_name = line[6:-1]
+							material_content_texenv_last_name = line[6:colon_pos]
 						elif line.startswith("        m_Texture: "):
-							possible_material_texenvs[material_content_texenv_last_name] = line[14:-1]
+							possible_material_texenvs[material_content_texenv_last_name] = line[19:]
 					elif paramtype == "Floats":
 						colon_pos = line.find(":")
 						if line.startswith("    - ") and colon_pos != 0:
