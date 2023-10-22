@@ -548,9 +548,29 @@ def save_unity_mat(config_struct):
 
 			parameters = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_shaderParameters"]
 			gamematid = None
+			possible_material_root_attributes = {}
+			possible_material_root_attributes_keyorder = []
 			possible_material_texenvs = {}
 			possible_material_floats = {}
 			possible_material_colors = {}
+
+			def add_material_root_attribute(k, v):
+				possible_material_root_attributes[k] = v
+				possible_material_root_attributes_keyorder.append(k)
+			add_material_root_attribute("serializedVersion", "6")
+			add_material_root_attribute("m_ObjectHideFlags", "0")
+			add_material_root_attribute("m_CorrespondingSourceObject", "{fileID: 0}")
+			add_material_root_attribute("m_PrefabInstance", "{fileID: 0}")
+			add_material_root_attribute("m_PrefabAsset", "{fileID: 0}")
+			add_material_root_attribute("m_Name", v["mu_materialname"])
+			add_material_root_attribute("m_Shader", shader_str)
+			add_material_root_attribute("m_ShaderKeywords", "") # This will be set later
+			add_material_root_attribute("m_LightmapFlags", "4")
+			add_material_root_attribute("m_EnableInstancingVariants", "0")
+			add_material_root_attribute("m_DoubleSidedGI", "0")
+			add_material_root_attribute("m_CustomRenderQueue", "-1")
+			add_material_root_attribute("stringTagMap", "{}")
+			add_material_root_attribute("disabledShaderPasses", "[]")
 			if config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] and os.path.isfile(fullpath):
 				material_existing_content = []
 				with open(fullpath, "r", encoding="utf-8") as f:
@@ -567,6 +587,14 @@ def save_unity_mat(config_struct):
 					elif line == "    m_Colors:":
 						paramtype = "Colors"
 						continue
+					elif line[0:2] == "  " and line[3:3] != " " and (":" in line):
+						paramtype = ""
+						colon_pos = line.find(": ")
+						check_key = line[2:colon_pos]
+						if check_key in possible_material_root_attributes:
+							possible_material_root_attributes[check_key] = line[colon_pos + 2:]
+						else:
+							debug_log("Unknown material root key " + check_key + " (" + v["mu_materialname"] + ")")
 					if paramtype == "":
 						pass
 					elif paramtype == "TexEnvs":
@@ -983,26 +1011,15 @@ def save_unity_mat(config_struct):
 							shader_keywords_list.append("RECEIVE_SHADOWS")
 							possible_material_floats["_ReceiveShadowsEnabled"] = 1.0
 			if True:
-				shader_keywords_str = (" ").join(sorted(shader_keywords_list))
+				if possible_material_root_attributes["m_ShaderKeywords"] == "":
+					possible_material_root_attributes["m_ShaderKeywords"] = (" ").join(sorted(shader_keywords_list))
 
 				material_content_rewrite.append("%YAML 1.1")
 				material_content_rewrite.append("%TAG !u! tag:unity3d.com,2011:")
 				material_content_rewrite.append("--- !u!21 &2100000")
 				material_content_rewrite.append("Material:")
-				material_content_rewrite.append("  serializedVersion: 6")
-				material_content_rewrite.append("  m_ObjectHideFlags: 0")
-				material_content_rewrite.append("  m_CorrespondingSourceObject: {fileID: 0}")
-				material_content_rewrite.append("  m_PrefabInstance: {fileID: 0}")
-				material_content_rewrite.append("  m_PrefabAsset: {fileID: 0}")
-				material_content_rewrite.append("  m_Name: " + v["mu_materialname"])
-				material_content_rewrite.append("  m_Shader: " + shader_str)
-				material_content_rewrite.append("  m_ShaderKeywords: " + shader_keywords_str)
-				material_content_rewrite.append("  m_LightmapFlags: 4")
-				material_content_rewrite.append("  m_EnableInstancingVariants: 0")
-				material_content_rewrite.append("  m_DoubleSidedGI: 0")
-				material_content_rewrite.append("  m_CustomRenderQueue: -1")
-				material_content_rewrite.append("  stringTagMap: {}")
-				material_content_rewrite.append("  disabledShaderPasses: []")
+				for k in possible_material_root_attributes_keyorder:
+					material_content_rewrite.append("  " + k + ": " + possible_material_root_attributes[k])
 				material_content_rewrite.append("  m_SavedProperties:")
 				material_content_rewrite.append("    serializedVersion: 3")
 				material_content_rewrite.append("    m_TexEnvs:")
