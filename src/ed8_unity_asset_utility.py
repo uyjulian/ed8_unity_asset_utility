@@ -508,37 +508,46 @@ def save_unity_mat(config_struct):
 	for v in material_objs:
 		effectvariant_dict = None
 		shader_keywords_list = []
-		shader_keywords_str = ""
 		if v["m_effectVariantIndex"] != None:
 			effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]
 			if effect_variant_path in effectvariant_fullpath_to_switches:
 				shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path]
+
+		def shader_keyword_has(s):
+			return (s in shader_keywords_list)
+		def shader_keyword_add(s):
+			if s != "":
+				if not shader_keyword_has(s):
+					shader_keywords_list.append(s)
+		def shader_keyword_remove(s):
+			if shader_keyword_has(s):
+				shader_keywords_list.remove(s)
 		shader_fn = ""
-		if "USE_OUTLINE" in shader_keywords_list:
-			if "ALPHA_TESTING_ENABLED" in shader_keywords_list:
+		if shader_keyword_has("USE_OUTLINE"):
+			if shader_keyword_has("ALPHA_TESTING_ENABLED"):
 				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Outline)"]
-			elif "ALPHA_BLENDING_ENABLED" in shader_keywords_list:
+			elif shader_keyword_has("ALPHA_BLENDING_ENABLED"):
 				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Outline)"]
 			else:
 				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Outline)"]
 		else:
-			if ("ALPHA_TESTING_ENABLED" in shader_keywords_list) and ("ALPHA_BLENDING_ENABLED" in shader_keywords_list):
-				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+			if (shader_keyword_has("ALPHA_TESTING_ENABLED")) and (shader_keyword_has("ALPHA_BLENDING_ENABLED")):
+				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
 				else:
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
-			elif "ALPHA_TESTING_ENABLED" in shader_keywords_list:
-				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+			elif shader_keyword_has("ALPHA_TESTING_ENABLED"):
+				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Grabpass)"]
 				else:
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout"]
-			elif "ALPHA_BLENDING_ENABLED" in shader_keywords_list:
-				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+			elif shader_keyword_has("ALPHA_BLENDING_ENABLED"):
+				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
 				else:
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
 			else:
-				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list) or ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Grabpass)"]
 				else:
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque"]
@@ -560,26 +569,36 @@ def save_unity_mat(config_struct):
 			possible_material_root_attributes = {}
 			possible_material_root_attributes_keyorder = []
 			possible_material_texenvs = {}
+			possible_material_ints = {}
 			possible_material_floats = {}
 			possible_material_colors = {}
 
 			def add_material_root_attribute(k, v):
 				possible_material_root_attributes[k] = v
 				possible_material_root_attributes_keyorder.append(k)
-			add_material_root_attribute("serializedVersion", "6")
+			material_version = config_struct["save_material_configuration_to_unity_metadata_material_version"]
+			add_material_root_attribute("serializedVersion", "") # This will be set later
 			add_material_root_attribute("m_ObjectHideFlags", "0")
 			add_material_root_attribute("m_CorrespondingSourceObject", "{fileID: 0}")
 			add_material_root_attribute("m_PrefabInstance", "{fileID: 0}")
 			add_material_root_attribute("m_PrefabAsset", "{fileID: 0}")
 			add_material_root_attribute("m_Name", v["mu_materialname"])
 			add_material_root_attribute("m_Shader", shader_str)
-			add_material_root_attribute("m_ShaderKeywords", "") # This will be set later
+			if material_version >= 8:
+				add_material_root_attribute("m_Parent", "{fileID: 0}")
+				add_material_root_attribute("m_ModifiedSerializedProperties", "0")
+				add_material_root_attribute("m_ValidKeywords", "") # This will be set later
+				add_material_root_attribute("m_InvalidKeywords", "[]")
+			else:
+				add_material_root_attribute("m_ShaderKeywords", "") # This will be set later
 			add_material_root_attribute("m_LightmapFlags", "4")
 			add_material_root_attribute("m_EnableInstancingVariants", "0")
 			add_material_root_attribute("m_DoubleSidedGI", "0")
 			add_material_root_attribute("m_CustomRenderQueue", "-1")
 			add_material_root_attribute("stringTagMap", "{}")
 			add_material_root_attribute("disabledShaderPasses", "[]")
+			if material_version >= 8:
+				add_material_root_attribute("m_LockedProperties", "")
 			if config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] and os.path.isfile(fullpath):
 				material_existing_content = []
 				with open(fullpath, "r", encoding="utf-8") as f:
@@ -590,6 +609,11 @@ def save_unity_mat(config_struct):
 					if line == "    m_TexEnvs:":
 						paramtype = "TexEnvs"
 						continue
+					elif line == "    m_Ints:":
+						raise Exception("Non-empty ints not yet supported")
+					elif line == "    m_Ints: []":
+						paramtype = ""
+						continue
 					elif line == "    m_Floats:":
 						paramtype = "Floats"
 						continue
@@ -599,7 +623,16 @@ def save_unity_mat(config_struct):
 					elif line[0:2] == "  " and line[2:3] != " " and (":" in line):
 						colon_pos = line.find(": ")
 						check_key = line[2:colon_pos]
-						if check_key != "m_SavedProperties":
+						if check_key == "m_SavedProperties":
+							pass
+						elif check_key == "m_ShaderKeywords":
+							paramtype = ""
+							shader_keywords_list_tmp = [x.strip() for x in line[colon_pos + 2:].split(" ")]
+							for keyword in shader_keywords_list_tmp:
+								shader_keyword_add(keyword)
+						elif check_key == "m_ValidKeywords" or check_key == "m_InvalidKeywords":
+							paramtype = "KeywordList"
+						else:
 							paramtype = ""
 							if check_key in possible_material_root_attributes:
 								possible_material_root_attributes[check_key] = line[colon_pos + 2:]
@@ -607,20 +640,27 @@ def save_unity_mat(config_struct):
 								debug_log("Unknown material root key " + check_key + " (" + v["mu_materialname"] + ")")
 					if paramtype == "":
 						pass
+					elif paramtype == "KeywordList":
+						if line.startswith("  - "):
+							shader_keyword_add(line[4:].strip())
 					elif paramtype == "TexEnvs":
 						colon_pos = line.find(":")
 						if line.startswith("    - "):
 							material_content_texenv_last_name = line[6:colon_pos]
 						elif line.startswith("        m_Texture: "):
 							possible_material_texenvs[material_content_texenv_last_name] = line[19:]
+					elif paramtype == "Ints":
+						colon_pos = line.find(":")
+						if line.startswith("    - ") and colon_pos != 0:
+							possible_material_ints[line[6:colon_pos]] = int(line[colon_pos + 2:])
 					elif paramtype == "Floats":
 						colon_pos = line.find(":")
 						if line.startswith("    - ") and colon_pos != 0:
-							possible_material_floats[line[6:colon_pos]] = line[colon_pos + 2:]
+							possible_material_floats[line[6:colon_pos]] = float(line[colon_pos + 2:])
 					elif paramtype == "Colors":
 						colon_pos = line.find(":")
 						if line.startswith("    - ") and colon_pos != 0:
-							possible_material_colors[line[6:colon_pos]] = [component[2:] for component in line[colon_pos + 2:][1:-1].replace(" ", "").split(",")]
+							possible_material_colors[line[6:colon_pos]] = [float(component[2:]) for component in line[colon_pos + 2:][1:-1].replace(" ", "").split(",")]
 
 			if config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"]:
 				parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
@@ -709,352 +749,367 @@ def save_unity_mat(config_struct):
 			if config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"]:
 				# TODO: DOUBLE_SIDED, CASTS_SHADOWS_ONLY, CASTS_SHADOWS, RECEIVE_SHADOWS, _FogRangeParameters, _HemiSphereAmbientAxis, _Instancing/material.enableInstancing, ints
 
-				if ("NOTHING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("NOTHING_ENABLED")):
 					possible_material_floats["_NothingEnabled"] = 1.0
 
-				if ("WATER_SURFACE_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("WATER_SURFACE_ENABLED")):
 					possible_material_floats["m_start_WaterSurface"] = 1.0
 					possible_material_floats["_WaterSurfaceEnabled"] = 1.0
 					possible_material_floats["m_end_WaterSurface"] = 0.0
 
-				if ("TRANSPARENT_DELAY_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("TRANSPARENT_DELAY_ENABLED")):
 					possible_material_floats["_TransparentDelayEnabled"] = 1.0
 
-				if ("VERTEX_COLOR_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("VERTEX_COLOR_ENABLED")):
 					possible_material_floats["_VertexColorEnabled"] = 1.0
 
-				if ("BLEND_VERTEX_COLOR_BY_ALPHA_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("BLEND_VERTEX_COLOR_BY_ALPHA_ENABLED")):
 					possible_material_floats["_BlendVertexColorAlphaEnabled"] = 1.0
 
-				if ("NO_ALL_LIGHTING_ENABLED" in shader_keywords_list) or ("GLARE_EMISSION_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("NO_ALL_LIGHTING_ENABLED")) or (shader_keyword_has("GLARE_EMISSION_ENABLED")):
 					possible_material_floats["_NoAllLightingEnabled"] = 1.0
 
-				if ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("NO_MAIN_LIGHT_SHADING_ENABLED")):
 					possible_material_floats["_NoMainLightShadingEnabled"] = 1.0
 
-				if ("HALF_LAMBERT_LIGHTING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("HALF_LAMBERT_LIGHTING_ENABLED")):
 					possible_material_floats["_HalfLambertLightingEnabled"] = 1.0
 
-				if ("LIGHT_DIRECTION_FOR_CHARACTER_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("LIGHT_DIRECTION_FOR_CHARACTER_ENABLED")):
 					possible_material_floats["m_start_PortraitLight"] = 1.0
 					possible_material_floats["_PortraitLightEnabled"] = 1.0
 					possible_material_floats["m_end_PortraitLight"] = 0.0
 
-				if ("UVA_SCRIPT_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("UVA_SCRIPT_ENABLED")):
 					possible_material_floats["m_start_UVA"] = 1.0
 					possible_material_floats["_UVAEnabled"] = 1.0
 					possible_material_floats["m_end_UVA"] = 0.0
 
-				if ("FAR_CLIP_BY_DITHER_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("FAR_CLIP_BY_DITHER_ENABLED")):
 					possible_material_floats["_FarClipDitherEnabled"] = 1.0
 
-				if ("FOG_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("FOG_ENABLED")):
 					possible_material_floats["m_start_Fog"] = 1.0
 					possible_material_floats["_FogEnabled"] = 1.0
 					possible_material_floats["m_end_Fog"] = 0.0
 
-				if ("FOG_RATIO_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("FOG_RATIO_ENABLED")):
 					possible_material_floats["_FogRatioEnabled"] = 1.0
 
-				if ("SHADOW_COLOR_SHIFT_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("SHADOW_COLOR_SHIFT_ENABLED")):
 					possible_material_floats["m_start_ShadowColorShift"] = 1.0
 					possible_material_floats["_ShadowColorShiftEnabled"] = 1.0
 					possible_material_floats["m_end_ShadowColorShift"] = 0.0
 
-				if ("SPECULAR_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("SPECULAR_ENABLED")):
 					possible_material_floats["m_start_Specular"] = 1.0
 					possible_material_floats["_SpecularEnabled"] = 1.0
 					possible_material_floats["m_end_Specular"] = 0.0
 
-				if ("FAKE_CONSTANT_SPECULAR_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("FAKE_CONSTANT_SPECULAR_ENABLED")):
 					possible_material_floats["m_start_FakeConstantSpec"] = 1.0
 					possible_material_floats["_FakeConstantSpecularEnabled"] = 1.0
 					possible_material_floats["m_end_FakeConstantSpec"] = 0.0
 
-				if ("SPECULAR_COLOR_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("SPECULAR_COLOR_ENABLED")):
 					possible_material_floats["m_start_SpecColor"] = 1.0
 					possible_material_floats["_SpecularColorEnabled"] = 1.0
 					possible_material_floats["m_end_SpecColor"] = 0.0
 
-				if ("RIM_LIGHTING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("RIM_LIGHTING_ENABLED")):
 					possible_material_floats["m_start_RimLighting"] = 1.0
 					possible_material_floats["_RimLightingEnabled"] = 1.0
 					possible_material_floats["m_end_RimLighting"] = 0.0
 
-				if ("RIM_TRANSPARENCY_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("RIM_TRANSPARENCY_ENABLED")):
 					possible_material_floats["_RimTransparencyEnabled"] = 1.0
 
-				if ("TEXCOORD_OFFSET_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("TEXCOORD_OFFSET_ENABLED")):
 					possible_material_floats["_TexcoordOffsetEnabled"] = 1.0
 
-				if ("NORMAL_MAPP_DXT5_NM_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("NORMAL_MAPP_DXT5_NM_ENABLED")):
 					possible_material_floats["_NormalMapDXT5NMEnabled"] = 1.0
 
-				if ("NORMAL_MAPP_DXT5_LP_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("NORMAL_MAPP_DXT5_LP_ENABLED")):
 					possible_material_floats["_NormalMapDXT5LPEnabled"] = 1.0
 
-				if ("NORMAL_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("NORMAL_MAPPING_ENABLED")):
 					possible_material_floats["m_start_NormalMap"] = 1.0
 					possible_material_floats["_NormalMappingEnabled"] = 1.0
 					possible_material_floats["m_end_NormalMap"] = 0.0
 
-				if ("SPECULAR_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("SPECULAR_MAPPING_ENABLED")):
 					possible_material_floats["m_start_SpecularMap"] = 1.0
 					possible_material_floats["_SpecularMappingEnabled"] = 1.0
 					possible_material_floats["m_end_SpecularMap"] = 0.0
 
-				if ("OCCULUSION_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("OCCULUSION_MAPPING_ENABLED")):
 					possible_material_floats["m_start_OcculusionMap"] = 1.0
 					possible_material_floats["_OcculusionMappingEnabled"] = 1.0
 					possible_material_floats["m_end_OcculusionMap"] = 0.0
 
-				if ("EMISSION_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("EMISSION_MAPPING_ENABLED")):
 					possible_material_floats["m_start_EmissionMap"] = 1.0
 					possible_material_floats["_EmissionMappingEnabled"] = 1.0
 
-				if ("MULTI_UV_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_ENANLED")):
 					possible_material_floats["m_start_MultiUV"] = 1.0
 					possible_material_floats["_MultiUVEnabled"] = 1.0
 
-				if ("MULTI_UV_ADDITIVE_BLENDING_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_ADDITIVE_BLENDING_ENANLED")):
 					possible_material_floats["_MultiUVAdditiveBlendingEnabled"] = 1.0
 
-				if ("MULTI_UV_MULTIPLICATIVE_BLENDING_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_MULTIPLICATIVE_BLENDING_ENANLED")):
 					possible_material_floats["_MultiUVMultiplicativeBlendingEnabled"] = 1.0
 
-				if ("MULTI_UV_MULTIPLICATIVE_BLENDING_LM_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_MULTIPLICATIVE_BLENDING_LM_ENANLED")):
 					possible_material_floats["_MultiUVMultiplicativeBlendingLMEnabled"] = 1.0
 
-				if ("MULTI_UV_MULTIPLICATIVE_BLENDING_EX_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_MULTIPLICATIVE_BLENDING_EX_ENANLED")):
 					possible_material_floats["_MultiUVMultiplicativeBlendingEXEnabled"] = 1.0
 
-				if ("MULTI_UV_SHADOW_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_SHADOW_ENANLED")):
 					possible_material_floats["_MultiUVShadowEnabled"] = 1.0
 
-				if ("MULTI_UV_FACE_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_FACE_ENANLED")):
 					possible_material_floats["_MultiUVFaceEnabled"] = 1.0
 
-				if ("MULTI_UV_TEXCOORD_OFFSET_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_TEXCOORD_OFFSET_ENABLED")):
 					possible_material_floats["_MultiUVTexCoordOffsetEnabled"] = 1.0
 
-				if ("MULTI_UV_NO_DIFFUSE_MAPPING_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_NO_DIFFUSE_MAPPING_ENANLED")):
 					possible_material_floats["_MultiUVNoDiffuseEnabled"] = 1.0
 
-				if ("MULTI_UV_NORMAL_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_NORMAL_MAPPING_ENABLED")):
 					possible_material_floats["m_start_MultiUVNormalMap"] = 1.0
 					possible_material_floats["_MultiUVNormalMappingEnabled"] = 1.0
 
-				if ("MULTI_UV_SPECULAR_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_SPECULAR_MAPPING_ENABLED")):
 					possible_material_floats["m_start_MultiUVSpecularMap"] = 1.0
 					possible_material_floats["_MultiUVSpecularMappingEnabled"] = 1.0
 
-				if ("MULTI_UV_OCCULUSION_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_OCCULUSION_MAPPING_ENABLED")):
 					possible_material_floats["m_start_MultiUVOcculusionMap"] = 1.0
 					possible_material_floats["_MultiUVOcculusionMappingEnabled"] = 1.0
 
-				if ("MULTI_UV_GLARE_MAP_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV_GLARE_MAP_ENABLED")):
 					possible_material_floats["m_start_MultiUVGlareMap"] = 1.0
 					possible_material_floats["_MultiUVGlareMappingEnabled"] = 1.0
 
-				if ("MULTI_UV2_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_ENANLED")):
 					possible_material_floats["m_start_MultiUV2"] = 1.0
 					possible_material_floats["_MultiUV2Enabled"] = 1.0
 
-				if ("MULTI_UV2_ADDITIVE_BLENDING_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_ADDITIVE_BLENDING_ENANLED")):
 					possible_material_floats["_MultiUV2AdditiveBlendingEnabled"] = 1.0
 
-				if ("MULTI_UV2_MULTIPLICATIVE_BLENDING_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_MULTIPLICATIVE_BLENDING_ENANLED")):
 					possible_material_floats["_MultiUV2MultiplicativeBlendingEnabled"] = 1.0
 
-				if ("MULTI_UV2_MULTIPLICATIVE_BLENDING_LM_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_MULTIPLICATIVE_BLENDING_LM_ENANLED")):
 					possible_material_floats["_MultiUV2MultiplicativeBlendingLMEnabled"] = 1.0
 
-				if ("MULTI_UV2_MULTIPLICATIVE_BLENDING_EX_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_MULTIPLICATIVE_BLENDING_EX_ENANLED")):
 					possible_material_floats["_MultiUV2MultiplicativeBlendingEXEnabled"] = 1.0
 
-				if ("MULTI_UV2_SHADOW_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_SHADOW_ENANLED")):
 					possible_material_floats["_MultiUV2ShadowEnabled"] = 1.0
 
-				if ("MULTI_UV2_FACE_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_FACE_ENANLED")):
 					possible_material_floats["_MultiUV2FaceEnabled"] = 1.0
 
-				if ("MULTI_UV2_TEXCOORD_OFFSET_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_TEXCOORD_OFFSET_ENABLED")):
 					possible_material_floats["_MultiUV2TexCoordOffsetEnabled"] = 1.0
 
-				if ("MULTI_UV2_NO_DIFFUSE_MAPPING_ENANLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_NO_DIFFUSE_MAPPING_ENANLED")):
 					possible_material_floats["_MultiUV2NoDiffuseEnabled"] = 1.0
 
-				if ("MULTI_UV2_NORMAL_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_NORMAL_MAPPING_ENABLED")):
 					possible_material_floats["m_start_MultiUV2NormalMap"] = 1.0
 					possible_material_floats["_MultiUV2NormalMappingEnabled"] = 1.0
 
-				if ("MULTI_UV2_SPECULAR_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_SPECULAR_MAPPING_ENABLED")):
 					possible_material_floats["m_start_MultiUV2SpecularMap"] = 1.0
 					possible_material_floats["_MultiUV2SpecularMappingEnabled"] = 1.0
 
-				if ("MULTI_UV2_OCCULUSION_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("MULTI_UV2_OCCULUSION_MAPPING_ENABLED")):
 					possible_material_floats["m_start_MultiUV2OcculusionMap"] = 1.0
 					possible_material_floats["_MultiUV2OcculusionMappingEnabled"] = 1.0
 
-				if ("CARTOON_SHADING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("CARTOON_SHADING_ENABLED")):
 					possible_material_floats["m_start_CartoonShading"] = 1.0
 					possible_material_floats["_CartoonShadingEnabled"] = 1.0
 
-				if ("CARTOON_HILIGHT_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("CARTOON_HILIGHT_ENABLED")):
 					possible_material_floats["m_start_CartoonHilight"] = 1.0
 					possible_material_floats["_CartoonHilightEnabled"] = 1.0
 
-				if ("EMVMAP_AS_IBL_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("EMVMAP_AS_IBL_ENABLED")):
 					possible_material_floats["_EMVMapAsIBLEnabled"] = 1.0
 
-				if ("SPHERE_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("SPHERE_MAPPING_ENABLED")):
 					possible_material_floats["m_start_SphereMap"] = 1.0
 					possible_material_floats["_SphereMappingEnabled"] = 1.0
 
-				if ("CUBE_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("CUBE_MAPPING_ENABLED")):
 					possible_material_floats["m_start_CubeMap"] = 1.0
 					possible_material_floats["_CubeMappingEnabled"] = 1.0
 
-				if ("PROJECTION_MAP_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("PROJECTION_MAP_ENABLED")):
 					possible_material_floats["m_start_ProjectionMap"] = 1.0
 					possible_material_floats["_ProjectionMappingEnabled"] = 1.0
 
-				if ("DUDV_MAPPING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("DUDV_MAPPING_ENABLED")):
 					possible_material_floats["m_start_DuDvMap"] = 1.0
 					possible_material_floats["_DuDvMappingEnabled"] = 1.0
 
-				if ("WINDY_GRASS_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("WINDY_GRASS_ENABLED")):
 					possible_material_floats["m_start_WindyGrass"] = 1.0
 					possible_material_floats["_WindyGrassEnabled"] = 1.0
 
-				if ("WINDY_GRASS_TEXV_WEIGHT_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("WINDY_GRASS_TEXV_WEIGHT_ENABLED")):
 					possible_material_floats["_WindyGrassTexVEnabled"] = 1.0
 
-				if ("USE_OUTLINE" in shader_keywords_list):
+				if (shader_keyword_has("USE_OUTLINE")):
 					possible_material_floats["m_start_Outline"] = 1.0
 					possible_material_floats["_OutlineEnabled"] = 1.0
 
-				if ("USE_OUTLINE_COLOR" in shader_keywords_list):
+				if (shader_keyword_has("USE_OUTLINE_COLOR")):
 					possible_material_floats["m_start_OutlineColor"] = 1.0
 					possible_material_floats["_OutlineColorEnabled"] = 1.0
 
-				if ("USE_SCREEN_UV" in shader_keywords_list):
+				if (shader_keyword_has("USE_SCREEN_UV")):
 					possible_material_floats["m_start_ScreenUV"] = 1.0
 					possible_material_floats["_ScreenUVEnabled"] = 1.0
 
-				if ("GLARE_MAP_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("GLARE_MAP_ENABLED")):
 					possible_material_floats["m_start_GlareMap"] = 1.0
 					possible_material_floats["_GlareMappingEnabled"] = 1.0
 					possible_material_floats["_GlareHilightPassEnabled"] = 1.0
 
-				if ("GLARE_HIGHTPASS_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("GLARE_HIGHTPASS_ENABLED")):
 					possible_material_floats["_GlareHilightPassEnabled"] = 1.0
 
-				if ("ALPHA_BLENDING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("ALPHA_BLENDING_ENABLED")):
 					possible_material_floats["_SrcBlend"] = 5.0
 					possible_material_floats["_DstBlend"] = 10.0
 					possible_material_floats["_ZWrite"] = 0.0
 
-				if ("ADDITIVE_BLENDING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("ADDITIVE_BLENDING_ENABLED")):
 					possible_material_floats["_SrcBlend"] = 5.0
 					possible_material_floats["_DstBlend"] = 1.0
 					possible_material_floats["_ZWrite"] = 0.0
 					possible_material_floats["_AdditiveBlendEnabled"] = 1.0
 
-				if ("SUBTRACT_BLENDING_ENABLED" in shader_keywords_list or "MULTIPLICATIVE_BLENDING_ENABLED" in shader_keywords_list):
+				if (shader_keyword_has("SUBTRACT_BLENDING_ENABLED") or shader_keyword_has("MULTIPLICATIVE_BLENDING_ENABLED")):
 					possible_material_floats["_SrcBlend"] = 0.0
 					possible_material_floats["_DstBlend"] = 6.0
 					possible_material_floats["_ZWrite"] = 0.0
 
-					if ("SUBTRACT_BLENDING_ENABLED" in shader_keywords_list):
+					if (shader_keyword_has("SUBTRACT_BLENDING_ENABLED")):
 						possible_material_floats["_SubtractiveBlendEnabled"] = 1.0
 
-					if ("MULTIPLICATIVE_BLENDING_ENABLED" in shader_keywords_list):
+					if (shader_keyword_has("MULTIPLICATIVE_BLENDING_ENABLED")):
 						possible_material_floats["_MultiplicativeBlendEnabled"] = 1.0
 
 				if ("_GlareIntensity" in possible_material_floats) and (possible_material_floats["_GlareIntensity"] == 1.0):
-					if ((not "GLARE_HIGHTPASS_ENABLED" in shader_keywords_list) and (not "GLARE_MAP_ENABLED" in shader_keywords_list)):
+					if ((not shader_keyword_has("GLARE_HIGHTPASS_ENABLED")) and (not shader_keyword_has("GLARE_MAP_ENABLED"))):
 						possible_material_floats["_GlareIntensity"] = 0.0
 					else:
 						possible_material_floats["_GlareHilightPassEnabled"] = 1.0
 
 				if isCS3Up:
-					if not ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list):
-						if not ("RIM_CLAMP_ENABLED" in shader_keywords_list):
-							shader_keywords_list.append("RIM_CLAMP_ENABLED")
-					if ("RIM_CLAMP_ENABLED" in shader_keywords_list):
+					if not (shader_keyword_has("NO_MAIN_LIGHT_SHADING_ENABLED")):
+						shader_keyword_add("RIM_CLAMP_ENABLED")
+					if (shader_keyword_has("RIM_CLAMP_ENABLED")):
 						possible_material_floats["m_start_RimClamp"] = 1.0
 						possible_material_floats["_RimClampEnabled"] = 1.0
 						possible_material_floats["m_end_RimClamp"] = 0.0
-					if not ("FLAT_AMBIENT_ENABLED" in shader_keywords_list):
-						shader_keywords_list.append("FLAT_AMBIENT_ENABLED")
+					shader_keyword_add("FLAT_AMBIENT_ENABLED")
 					possible_material_floats["_FlatAmbientEnabled"] = 1.0
 
 
 				# Lighting
-				possible_material_colors["_GlobalAmbientColor"] = [0.55, 0.55, 0.55, 1.00]
-				possible_material_colors["_HemiSphereAmbientSkyColor"] = [0.55, 0.55, 0.55, 1.00]
-				possible_material_colors["_HemiSphereAmbientGndColor"] = [0.55, 0.55, 0.55, 1.00]
-				possible_material_colors["_FogColor"] = [0.00, 0.00, 0.00, 0.00]
-				possible_material_floats["_FogRateClamp"] = 1.00
+				if "_GlobalAmbientColor" not in possible_material_colors:
+					possible_material_colors["_GlobalAmbientColor"] = [0.55, 0.55, 0.55, 1.00]
+				if "_HemiSphereAmbientSkyColor" not in possible_material_colors:
+					possible_material_colors["_HemiSphereAmbientSkyColor"] = [0.55, 0.55, 0.55, 1.00]
+				if "_HemiSphereAmbientGndColor" not in possible_material_colors:
+					possible_material_colors["_HemiSphereAmbientGndColor"] = [0.55, 0.55, 0.55, 1.00]
+				if "_FogColor" not in possible_material_colors:
+					possible_material_colors["_FogColor"] = [0.00, 0.00, 0.00, 0.00]
+				if "_FogRateClamp" not in possible_material_floats:
+					possible_material_floats["_FogRateClamp"] = 1.00
 				# possible_material_colors["_GameMaterialDiffuse"] = [1.00, 1.00, 1.00, 1.00]
 				# possible_material_colors["_GameMaterialEmission"] = [0.0, 0.0, 0.0, 0.0]
 
 				## Mode 2 related stuff
 				if isCS3Up:
-					if ((not ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list)) and (not ("NO_ALL_LIGHTING_ENABLED" in shader_keywords_list)) and (not ("CARTOON_SHADING_ENABLED" in shader_keywords_list))):
-						if not ("HALF_LAMBERT_LIGHTING_ENABLED" in shader_keywords_list):
-							shader_keywords_list.append("HALF_LAMBERT_LIGHTING_ENABLED")
+					if ((not (shader_keyword_has("NO_MAIN_LIGHT_SHADING_ENABLED"))) and (not (shader_keyword_has("NO_ALL_LIGHTING_ENABLED"))) and (not (shader_keyword_has("CARTOON_SHADING_ENABLED")))):
+						shader_keyword_add("HALF_LAMBERT_LIGHTING_ENABLED")
 						possible_material_floats["_HalfLambertLightingEnabled"] = 1.0
-					if ("RIM_LIGHTING_ENABLED" in shader_keywords_list):
+					if (shader_keyword_has("RIM_LIGHTING_ENABLED")):
 						possible_material_floats["m_start_RimLighting"] = 1.0
 						possible_material_floats["_RimLightingEnabled"] = 1.0
 						possible_material_floats["m_end_RimLighting"] = 0.0
-						if not ("RIM_CLAMP_ENABLED" in shader_keywords_list):
-							shader_keywords_list.append("RIM_CLAMP_ENABLED")
+						shader_keyword_add("RIM_CLAMP_ENABLED")
 						possible_material_floats["m_start_RimClamp"] = 1.0
 						possible_material_floats["_RimClampEnabled"] = 1.0
 						possible_material_floats["m_end_RimClamp"] = 0.0
-					if ("NO_MAIN_LIGHT_SHADING_ENABLED" in shader_keywords_list) or (("_NoMainLightShadingEnabled" in possible_material_floats) and possible_material_floats["_NoMainLightShadingEnabled"] == 1.0):
-						if "RIM_CLAMP_ENABLED" in shader_keywords_list:
-							shader_keywords_list.remove("RIM_CLAMP_ENABLED")
+					if (shader_keyword_has("NO_MAIN_LIGHT_SHADING_ENABLED")) or (("_NoMainLightShadingEnabled" in possible_material_floats) and possible_material_floats["_NoMainLightShadingEnabled"] == 1.0):
+						shader_keyword_remove("RIM_CLAMP_ENABLED")
 						possible_material_floats["m_start_RimClamp"] = 0.0
 						possible_material_floats["_RimClampEnabled"] = 0.0
 						possible_material_floats["m_end_RimClamp"] = 0.0
-					if not ("FLAT_AMBIENT_ENABLED" in shader_keywords_list):
-						shader_keywords_list.append("FLAT_AMBIENT_ENABLED")
+					shader_keyword_add("FLAT_AMBIENT_ENABLED")
 					possible_material_floats["_FlatAmbientEnabled"] = 1.0
 
 				if ("_GlareIntensity" in possible_material_floats) and (possible_material_floats["_GlareIntensity"] == 0.0):
-					if ((not ("GLARE_HIGHTPASS_ENABLED" in shader_keywords_list)) and (not ("GLARE_MAP_ENABLED" in shader_keywords_list)) and (not ("ALPHA_BLENDING_ENABLED" in shader_keywords_list))):
-						if not ("RECEIVE_SHADOWS" in shader_keywords_list):
-							shader_keywords_list.append("RECEIVE_SHADOWS")
-							possible_material_floats["_ReceiveShadowsEnabled"] = 1.0
+					if ((not (shader_keyword_has("GLARE_HIGHTPASS_ENABLED"))) and (not (shader_keyword_has("GLARE_MAP_ENABLED"))) and (not (shader_keyword_has("ALPHA_BLENDING_ENABLED")))):
+						shader_keyword_add("RECEIVE_SHADOWS")
+						possible_material_floats["_ReceiveShadowsEnabled"] = 1.0
 			if True:
-				if possible_material_root_attributes["m_ShaderKeywords"] == "":
-					possible_material_root_attributes["m_ShaderKeywords"] = (" ").join(sorted(shader_keywords_list))
-
 				material_content_rewrite.append("%YAML 1.1")
 				material_content_rewrite.append("%TAG !u! tag:unity3d.com,2011:")
 				material_content_rewrite.append("--- !u!21 &2100000")
 				material_content_rewrite.append("Material:")
 				for k in possible_material_root_attributes_keyorder:
-					material_content_rewrite.append("  " + k + ": " + possible_material_root_attributes[k])
+					target_value = possible_material_root_attributes[k]
+					if k == "m_ShaderKeywords":
+						target_value = (" ").join(sorted(shader_keywords_list))
+					if k == "serializedVersion":
+						if material_version >= 8:
+							target_value = "8"
+						else:
+							target_value = "6"
+					if k == "m_ValidKeywords":
+						if len(shader_keywords_list) == 0:
+							target_value = "[]"
+						else:
+							target_value = ""
+					material_content_rewrite.append("  " + k + ": " + target_value)
+					if k == "m_ValidKeywords":
+						for keyword in sorted(shader_keywords_list):
+							material_content_rewrite.append("  - " + keyword)
 				material_content_rewrite.append("  m_SavedProperties:")
 				material_content_rewrite.append("    serializedVersion: 3")
 				material_content_rewrite.append("    m_TexEnvs:")
 				for item in sorted(possible_material_texenvs.keys()):
-					material_content_rewrite.append("    - " + item + ":")
-					material_content_rewrite.append("        m_Texture: " + possible_material_texenvs[item])
+					material_content_rewrite.append("    - %s:" % (item))
+					material_content_rewrite.append("        m_Texture: %s" % (possible_material_texenvs[item]))
 					material_content_rewrite.append("        m_Scale: {x: 1, y: 1}")
 					material_content_rewrite.append("        m_Offset: {x: 0, y: 0}")
+				if material_version >= 8:
+					material_content_rewrite.append("    m_Ints: []")
 				material_content_rewrite.append("    m_Floats:")
 				for item in sorted(possible_material_floats.keys()):
-					material_content_rewrite.append("    - " + item + ": " + str(possible_material_floats[item]))
+					material_content_rewrite.append("    - %s: %g" % (item, possible_material_floats[item]))
 				material_content_rewrite.append("    m_Colors:")
 				for item in sorted(possible_material_colors.keys()):
 					indexed_item = possible_material_colors[item]
-					material_content_rewrite.append("    - " + item + ": " + "{r: " + str(indexed_item[0]) + ", g: " + str(indexed_item[1]) + ", b: " + str(indexed_item[2]) + ", a: " + str(indexed_item[3]) + "}")
+					material_content_rewrite.append("    - %s: {r: %g, g: %g, b: %g, a: %g}" % (item, indexed_item[0], indexed_item[1], indexed_item[2], indexed_item[3]))
+				if material_version >= 8:
+					material_content_rewrite.append("  m_BuildTextureStacks: []")
 
 			if not config_struct["dry_run"]:
 				write_if_unchanged(fullpath, "".join([x + "\n" for x in material_content_rewrite if x != ""]))
@@ -1231,6 +1286,13 @@ def standalone_main():
 			Applies the new material configuration on top of the current one only based on shader parameters passed in as comma delimited list.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-material-version",
+		type=str,
+		default="8",
+		help=textwrap.dedent('''\
+			The target version to generate material data.
+		''')
+		)
 
 	args = parser.parse_args()
 
@@ -1260,6 +1322,7 @@ def standalone_main():
 	config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_filter_shader_parameter"] = args.save_material_configuration_to_unity_metadata_filter_shader_parameter
+	config_struct["save_material_configuration_to_unity_metadata_material_version"] = int(args.save_material_configuration_to_unity_metadata_material_version)
 
 	save_unity_mat(config_struct)
 
