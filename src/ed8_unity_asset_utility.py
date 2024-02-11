@@ -1172,18 +1172,19 @@ def save_unity_mat(config_struct):
 			for line in debug_list:
 				f.write(line + "\n")
 
-def standalone_main():
+def get_parser():
 	import argparse
-	import textwrap
 
 	parser = argparse.ArgumentParser(
 		description='Utility to insert materials from ED8 into Unity prefabs automatically.',
 		usage='Use "%(prog)s --help" for more information.',
 		fromfile_prefix_chars='@',
 		formatter_class=argparse.RawTextHelpFormatter)
-	parser.add_argument("input_file",
-		type=str, 
-		help="The input .material.json file.")
+	return parser
+
+def add_common_arguments(parser):
+	import textwrap
+
 	parser.add_argument("--dry-run",
 		type=str,
 		default=str(False),
@@ -1307,8 +1308,7 @@ def standalone_main():
 		''')
 		)
 
-	args = parser.parse_args()
-
+def handle_common_arguments(args_namespace, config_struct):
 	def set_path(dic, in_key, in_path):
 		import os
 		new_path = ""
@@ -1318,24 +1318,62 @@ def standalone_main():
 			if not os.path.isdir(new_path):
 				raise Exception("Path passed in for " + in_key + " is not existent")
 		dic[in_key] = new_path
+	config_struct["dry_run"] = args_namespace.dry_run.lower() == "true"
+	set_path(config_struct, "backup_path", args_namespace.backup_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_path", args_namespace.save_material_configuration_to_unity_metadata_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_path", args_namespace.save_material_configuration_to_unity_metadata_texture_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_inf_path", args_namespace.save_material_configuration_to_unity_metadata_inf_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_uvb_path", args_namespace.save_material_configuration_to_unity_metadata_uvb_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_effect_json_path", args_namespace.save_material_configuration_to_unity_metadata_effect_json_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_json_path", args_namespace.save_material_configuration_to_unity_metadata_texture_json_path)
+	config_struct["save_material_configuration_to_unity_metadata_debug"] = args_namespace.save_material_configuration_to_unity_metadata_debug.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args_namespace.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] = args_namespace.save_material_configuration_to_unity_metadata_apply_previous_configuration.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"] = args_namespace.save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"] = args_namespace.save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_filter_shader_parameter"] = args_namespace.save_material_configuration_to_unity_metadata_filter_shader_parameter
+	config_struct["save_material_configuration_to_unity_metadata_material_version"] = int(args_namespace.save_material_configuration_to_unity_metadata_material_version)
+
+class UnityMatPostProcessHandler:
+	def __init__(self):
+		pass
+
+	def parse_start(self, module, args=[]):
+		parser = get_parser()
+		add_common_arguments(parser)
+
+		args_namespace, remaining_args = parser.parse_known_args(args=args)
+		config_struct = {}
+		handle_common_arguments(args_namespace, config_struct)
+		self.config_struct = config_struct
+		self.module = module
+		return remaining_args
+
+	def parse_cluster(self, cluster_mesh_info=None):
+		import os
+		config_struct = self.config_struct
+		config_struct["input_file"] = os.path.splitext(cluster_mesh_info.filename)[0] + ".material.json"
+		config_struct["input_structure"] = self.module.DUMP_convert_material_to_structure(cluster_mesh_info)
+		save_unity_mat(config_struct)
+
+	def parse_finish(self):
+		pass
+
+def get_postprocess_handler():
+	return UnityMatPostProcessHandler()
+
+def standalone_main():
+	parser = get_parser()
+	parser.add_argument("input_file",
+		type=str, 
+		help="The input .material.json file.")
+	add_common_arguments(parser)
+
+	args_namespace = parser.parse_args()
 
 	config_struct = {}
-	config_struct["input_file"] = args.input_file
-	config_struct["dry_run"] = args.dry_run.lower() == "true"
-	set_path(config_struct, "backup_path", args.backup_path)
-	set_path(config_struct, "save_material_configuration_to_unity_metadata_path", args.save_material_configuration_to_unity_metadata_path)
-	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_path", args.save_material_configuration_to_unity_metadata_texture_path)
-	set_path(config_struct, "save_material_configuration_to_unity_metadata_inf_path", args.save_material_configuration_to_unity_metadata_inf_path)
-	set_path(config_struct, "save_material_configuration_to_unity_metadata_uvb_path", args.save_material_configuration_to_unity_metadata_uvb_path)
-	set_path(config_struct, "save_material_configuration_to_unity_metadata_effect_json_path", args.save_material_configuration_to_unity_metadata_effect_json_path)
-	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_json_path", args.save_material_configuration_to_unity_metadata_texture_json_path)
-	config_struct["save_material_configuration_to_unity_metadata_debug"] = args.save_material_configuration_to_unity_metadata_debug.lower() == "true"
-	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
-	config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] = args.save_material_configuration_to_unity_metadata_apply_previous_configuration.lower() == "true"
-	config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration.lower() == "true"
-	config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"] = args.save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration.lower() == "true"
-	config_struct["save_material_configuration_to_unity_metadata_filter_shader_parameter"] = args.save_material_configuration_to_unity_metadata_filter_shader_parameter
-	config_struct["save_material_configuration_to_unity_metadata_material_version"] = int(args.save_material_configuration_to_unity_metadata_material_version)
+	config_struct["input_file"] = args_namespace.input_file
+	handle_common_arguments(args_namespace, config_struct)
 
 	save_unity_mat(config_struct)
 
