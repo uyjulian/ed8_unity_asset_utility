@@ -160,6 +160,8 @@ def save_unity_mat(config_struct):
 			debug_list.append(ln)
 
 	shader_parameter_filter = config_struct["save_material_configuration_to_unity_metadata_filter_shader_parameter"].split(",")
+	if "" in shader_parameter_filter:
+		shader_parameter_filter.remove("")
 
 	in_filename = config_struct["input_file"]
 
