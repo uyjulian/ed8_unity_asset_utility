@@ -224,11 +224,23 @@ def save_unity_mat(config_struct):
 
 	readdir_meta_to_guid_and_fullpath(project_texture_path, basename_to_guid_texture, basename_to_projectpath_texture)
 
-	# Just copy variables for now
 	basename_to_guid_model = basename_to_guid_texture
 	basename_to_projectpath_model = basename_to_projectpath_texture
+
+	project_model_path = config_struct["save_material_configuration_to_unity_metadata_model_path"]
+	if project_model_path != "":
+		basename_to_guid_model = {}
+		basename_to_projectpath_model = {}
+		readdir_meta_to_guid_and_fullpath(project_model_path, basename_to_guid_model, basename_to_projectpath_model)
+
 	basename_to_guid_shader = basename_to_guid_texture
 	basename_to_projectpath_shader = basename_to_projectpath_texture
+
+	project_shader_path = config_struct["save_material_configuration_to_unity_metadata_shader_path"]
+	if project_shader_path != "":
+		basename_to_guid_shader = {}
+		basename_to_projectpath_shader = {}
+		readdir_meta_to_guid_and_fullpath(project_shader_path, basename_to_guid_shader, basename_to_projectpath_shader)
 
 	basename_to_path_inf = {}
 	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_inf_path"], basename_to_path_inf, ".inf")
@@ -1218,6 +1230,24 @@ def add_common_arguments(parser):
 			The path specified by this argument needs to be in the Assets directory of the Unity project.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-model-path",
+		type=str,
+		default="",
+		help=textwrap.dedent('''\
+			Set this to a path containing .fbx.meta files.
+			If the string is empty, the texture path option will be used for the path instead.
+			The path specified by this argument needs to be in the Assets directory of the Unity project.
+		''')
+		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-shader-path",
+		type=str,
+		default="",
+		help=textwrap.dedent('''\
+			Set this to a path containing .shader.meta files.
+			If the string is empty, the texture path option will be used for the path instead.
+			The path specified by this argument needs to be in the Assets directory of the Unity project.
+		''')
+		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-inf-path",
 		type=str,
 		default="",
@@ -1322,6 +1352,8 @@ def handle_common_arguments(args_namespace, config_struct):
 	set_path(config_struct, "backup_path", args_namespace.backup_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_path", args_namespace.save_material_configuration_to_unity_metadata_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_path", args_namespace.save_material_configuration_to_unity_metadata_texture_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_model_path", args_namespace.save_material_configuration_to_unity_metadata_model_path)
+	set_path(config_struct, "save_material_configuration_to_unity_metadata_shader_path", args_namespace.save_material_configuration_to_unity_metadata_shader_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_inf_path", args_namespace.save_material_configuration_to_unity_metadata_inf_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_uvb_path", args_namespace.save_material_configuration_to_unity_metadata_uvb_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_effect_json_path", args_namespace.save_material_configuration_to_unity_metadata_effect_json_path)
