@@ -130,6 +130,9 @@ def mutate_indentation_level(inarr, dic):
 		elif type(inarr[i][1]) == list:
 			raise Exception("List mutation NYI")
 
+def float_as_shortest_str(flt):
+	return ("%g" % flt) if (type(flt) == float) else str(flt)
+
 shader_name_to_basename = {
 	"ED8/Cold Steel Shader/Cutout (Grabpass)" : "ED8_Cutout (Grabpass).shader",
 	"ED8/Cold Steel Shader/Cutout (Outline)" : "ED8_Cutout (Outline).shader",
@@ -576,6 +579,10 @@ def save_unity_mat(config_struct):
 			def add_material_root_attribute(k, v):
 				possible_material_root_attributes[k] = v
 				possible_material_root_attributes_keyorder.append(k)
+			def remove_material_root_attribute(k):
+				if k in possible_material_root_attributes_keyorder:
+					del possible_material_root_attributes[k]
+					possible_material_root_attributes_keyorder.remove(k)
 			material_version = config_struct["save_material_configuration_to_unity_metadata_material_version"]
 			add_material_root_attribute("serializedVersion", "") # This will be set later
 			add_material_root_attribute("m_ObjectHideFlags", "0")
@@ -584,21 +591,20 @@ def save_unity_mat(config_struct):
 			add_material_root_attribute("m_PrefabAsset", "{fileID: 0}")
 			add_material_root_attribute("m_Name", v["mu_materialname"])
 			add_material_root_attribute("m_Shader", shader_str)
-			if material_version >= 8:
-				add_material_root_attribute("m_Parent", "{fileID: 0}")
-				add_material_root_attribute("m_ModifiedSerializedProperties", "0")
-				add_material_root_attribute("m_ValidKeywords", "") # This will be set later
-				add_material_root_attribute("m_InvalidKeywords", "[]")
-			else:
-				add_material_root_attribute("m_ShaderKeywords", "") # This will be set later
+			add_material_root_attribute("m_Parent", "{fileID: 0}")
+			add_material_root_attribute("m_ModifiedSerializedProperties", "0")
+			add_material_root_attribute("m_ValidKeywords", "") # This will be set later
+			add_material_root_attribute("m_InvalidKeywords", "[]")
+			add_material_root_attribute("m_ShaderKeywords", "") # This will be set later
 			add_material_root_attribute("m_LightmapFlags", "4")
 			add_material_root_attribute("m_EnableInstancingVariants", "0")
 			add_material_root_attribute("m_DoubleSidedGI", "0")
 			add_material_root_attribute("m_CustomRenderQueue", "-1")
 			add_material_root_attribute("stringTagMap", "{}")
 			add_material_root_attribute("disabledShaderPasses", "[]")
-			if material_version >= 8:
-				add_material_root_attribute("m_LockedProperties", "")
+			add_material_root_attribute("m_LockedProperties", "")
+			add_material_root_attribute("m_SavedProperties", "") # This will be set later
+			add_material_root_attribute("m_BuildTextureStacks", "[]")
 			if config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] and os.path.isfile(fullpath):
 				material_existing_content = []
 				with open(fullpath, "r", encoding="utf-8") as f:
@@ -652,15 +658,15 @@ def save_unity_mat(config_struct):
 					elif paramtype == "Ints":
 						colon_pos = line.find(":")
 						if line.startswith("    - ") and colon_pos != 0:
-							possible_material_ints[line[6:colon_pos]] = int(line[colon_pos + 2:])
+							possible_material_ints[line[6:colon_pos]] = line[colon_pos + 2:]
 					elif paramtype == "Floats":
 						colon_pos = line.find(":")
 						if line.startswith("    - ") and colon_pos != 0:
-							possible_material_floats[line[6:colon_pos]] = float(line[colon_pos + 2:])
+							possible_material_floats[line[6:colon_pos]] = line[colon_pos + 2:]
 					elif paramtype == "Colors":
 						colon_pos = line.find(":")
 						if line.startswith("    - ") and colon_pos != 0:
-							possible_material_colors[line[6:colon_pos]] = [float(component[2:]) for component in line[colon_pos + 2:][1:-1].replace(" ", "").split(",")]
+							possible_material_colors[line[6:colon_pos]] = [component[2:] for component in line[colon_pos + 2:][1:-1].replace(" ", "").split(",")]
 
 			if config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"]:
 				parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
@@ -1068,6 +1074,19 @@ def save_unity_mat(config_struct):
 					if ((not (shader_keyword_has("GLARE_HIGHTPASS_ENABLED"))) and (not (shader_keyword_has("GLARE_MAP_ENABLED"))) and (not (shader_keyword_has("ALPHA_BLENDING_ENABLED")))):
 						shader_keyword_add("RECEIVE_SHADOWS")
 						possible_material_floats["_ReceiveShadowsEnabled"] = 1.0
+			if material_version >= 8:
+				possible_material_root_attributes["serializedVersion"] = "8"
+				possible_material_root_attributes["m_ValidKeywords"] = "[]" if (len(shader_keywords_list) == 0) else ""
+				remove_material_root_attribute("m_ShaderKeywords")
+			else:
+				possible_material_root_attributes["serializedVersion"] = "6"
+				possible_material_root_attributes["m_ShaderKeywords"] = (" ").join(sorted(shader_keywords_list))
+				remove_material_root_attribute("m_Parent")
+				remove_material_root_attribute("m_ModifiedSerializedProperties")
+				remove_material_root_attribute("m_ValidKeywords")
+				remove_material_root_attribute("m_InvalidKeywords")
+				remove_material_root_attribute("m_LockedProperties")
+				remove_material_root_attribute("m_BuildTextureStacks")
 			if True:
 				material_content_rewrite.append("%YAML 1.1")
 				material_content_rewrite.append("%TAG !u! tag:unity3d.com,2011:")
@@ -1075,41 +1094,27 @@ def save_unity_mat(config_struct):
 				material_content_rewrite.append("Material:")
 				for k in possible_material_root_attributes_keyorder:
 					target_value = possible_material_root_attributes[k]
-					if k == "m_ShaderKeywords":
-						target_value = (" ").join(sorted(shader_keywords_list))
-					if k == "serializedVersion":
-						if material_version >= 8:
-							target_value = "8"
-						else:
-							target_value = "6"
-					if k == "m_ValidKeywords":
-						if len(shader_keywords_list) == 0:
-							target_value = "[]"
-						else:
-							target_value = ""
 					material_content_rewrite.append("  " + k + ": " + target_value)
 					if k == "m_ValidKeywords":
 						for keyword in sorted(shader_keywords_list):
 							material_content_rewrite.append("  - " + keyword)
-				material_content_rewrite.append("  m_SavedProperties:")
-				material_content_rewrite.append("    serializedVersion: 3")
-				material_content_rewrite.append("    m_TexEnvs:")
-				for item in sorted(possible_material_texenvs.keys()):
-					material_content_rewrite.append("    - %s:" % (item))
-					material_content_rewrite.append("        m_Texture: %s" % (possible_material_texenvs[item]))
-					material_content_rewrite.append("        m_Scale: {x: 1, y: 1}")
-					material_content_rewrite.append("        m_Offset: {x: 0, y: 0}")
-				if material_version >= 8:
-					material_content_rewrite.append("    m_Ints: []")
-				material_content_rewrite.append("    m_Floats:")
-				for item in sorted(possible_material_floats.keys()):
-					material_content_rewrite.append("    - %s: %g" % (item, possible_material_floats[item]))
-				material_content_rewrite.append("    m_Colors:")
-				for item in sorted(possible_material_colors.keys()):
-					indexed_item = possible_material_colors[item]
-					material_content_rewrite.append("    - %s: {r: %g, g: %g, b: %g, a: %g}" % (item, indexed_item[0], indexed_item[1], indexed_item[2], indexed_item[3]))
-				if material_version >= 8:
-					material_content_rewrite.append("  m_BuildTextureStacks: []")
+					if k == "m_SavedProperties":
+						material_content_rewrite.append("    serializedVersion: 3")
+						material_content_rewrite.append("    m_TexEnvs:")
+						for item in sorted(possible_material_texenvs.keys()):
+							material_content_rewrite.append("    - %s:" % (item))
+							material_content_rewrite.append("        m_Texture: %s" % (possible_material_texenvs[item]))
+							material_content_rewrite.append("        m_Scale: {x: 1, y: 1}")
+							material_content_rewrite.append("        m_Offset: {x: 0, y: 0}")
+						if material_version >= 8:
+							material_content_rewrite.append("    m_Ints: []")
+						material_content_rewrite.append("    m_Floats:")
+						for item in sorted(possible_material_floats.keys()):
+							material_content_rewrite.append("    - %s: %s" % (item, float_as_shortest_str(possible_material_floats[item])))
+						material_content_rewrite.append("    m_Colors:")
+						for item in sorted(possible_material_colors.keys()):
+							indexed_item = possible_material_colors[item]
+							material_content_rewrite.append("    - %s: {r: %s, g: %s, b: %s, a: %s}" % (item, float_as_shortest_str(indexed_item[0]), float_as_shortest_str(indexed_item[1]), float_as_shortest_str(indexed_item[2]), float_as_shortest_str(indexed_item[3])))
 
 			if not config_struct["dry_run"]:
 				write_if_unchanged(fullpath, "".join([x + "\n" for x in material_content_rewrite if x != ""]))
@@ -1288,7 +1293,7 @@ def standalone_main():
 		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-material-version",
 		type=str,
-		default="8",
+		default="6",
 		help=textwrap.dedent('''\
 			The target version to generate material data.
 		''')
