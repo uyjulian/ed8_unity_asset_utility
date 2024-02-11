@@ -581,9 +581,9 @@ def save_unity_mat(config_struct):
 
 		debug_log("Handling material " + v["mu_name"] + " (" + v["mu_materialname"] + ")")
 		matname = (v["mu_materialname"] + ".mat").lower()
-		if True:
+		if (config_struct["save_material_configuration_to_unity_metadata_create_materials"]) or (matname in basename_to_projectpath_mat):
 			material_name_to_guid[v["mu_materialname"]] = get_guid_for_path(matname, config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
-			fullpath = basename_to_projectpath_mat[matname]
+			material_fullpath = basename_to_projectpath_mat[matname]
 			material_content_rewrite = []
 
 			parameters = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_shaderParameters"]
@@ -624,9 +624,9 @@ def save_unity_mat(config_struct):
 			add_material_root_attribute("m_LockedProperties", "")
 			add_material_root_attribute("m_SavedProperties", "") # This will be set later
 			add_material_root_attribute("m_BuildTextureStacks", "[]")
-			if config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] and os.path.isfile(fullpath):
+			if config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] and os.path.isfile(material_fullpath):
 				material_existing_content = []
-				with open(fullpath, "r", encoding="utf-8") as f:
+				with open(material_fullpath, "r", encoding="utf-8") as f:
 					material_existing_content = f.read().split("\n")
 				material_content_texenv_last_name = ""
 				paramtype = ""
@@ -1136,7 +1136,7 @@ def save_unity_mat(config_struct):
 							material_content_rewrite.append("    - %s: {r: %s, g: %s, b: %s, a: %s}" % (item, float_as_shortest_str(indexed_item[0]), float_as_shortest_str(indexed_item[1]), float_as_shortest_str(indexed_item[2]), float_as_shortest_str(indexed_item[3])))
 
 			if not config_struct["dry_run"]:
-				write_if_unchanged(fullpath, "".join([x + "\n" for x in material_content_rewrite if x != ""]))
+				write_if_unchanged(material_fullpath, "".join([x + "\n" for x in material_content_rewrite if x != ""]))
 		else:
 			debug_log("Material .mat not found")
 
@@ -1294,6 +1294,13 @@ def add_common_arguments(parser):
 			Not affected by the --dry-run command line argument.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-create-materials",
+		type=str,
+		default=str(True),
+		help=textwrap.dedent('''\
+			Create .mat files if they do not already exist.
+		''')
+		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-compress-textures",
 		type=str,
 		default=str(True),
@@ -1359,6 +1366,7 @@ def handle_common_arguments(args_namespace, config_struct):
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_effect_json_path", args_namespace.save_material_configuration_to_unity_metadata_effect_json_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_json_path", args_namespace.save_material_configuration_to_unity_metadata_texture_json_path)
 	config_struct["save_material_configuration_to_unity_metadata_debug"] = args_namespace.save_material_configuration_to_unity_metadata_debug.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_create_materials"] = args_namespace.save_material_configuration_to_unity_metadata_create_materials.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args_namespace.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] = args_namespace.save_material_configuration_to_unity_metadata_apply_previous_configuration.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration"] = args_namespace.save_material_configuration_to_unity_metadata_apply_shader_keyword_configuration.lower() == "true"
