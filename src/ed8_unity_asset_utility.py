@@ -166,8 +166,11 @@ def save_unity_mat(config_struct):
 	in_filename = config_struct["input_file"]
 
 	in_structure = None
-	with open(in_filename, "r") as f:
-		in_structure = json.load(f)
+	if "input_structure" in config_struct:
+		in_structure = config_struct["input_structure"]
+	else:
+		with open(in_filename, "r") as f:
+			in_structure = json.load(f)
 
 	input_filename = in_structure["input_filename"]
 	material_objs = in_structure["materials"]
