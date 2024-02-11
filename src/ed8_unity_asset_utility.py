@@ -366,13 +366,13 @@ def save_unity_mat(config_struct):
 
 	texture_fullpath_to_sampler = {}
 	for v in material_objs:
-		parameters_samplerstate = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesSamplerStateIndexes"]
-		parameters_imports = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
+		parameters_samplerstate = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitions_object_references_sampler_state_indexes"]
+		parameters_imports = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitions_object_references_asset_reference_import_indexes"]
 		for key in sorted(parameters_imports.keys()):
 			if (key + "S") in parameters_samplerstate:
-				texture_fullpath_to_sampler[asset_reference_import_objs[parameters_imports[key]]["m_id"]] = sampler_state_objs[parameters_samplerstate[key + "S"]]
+				texture_fullpath_to_sampler[asset_reference_import_objs[parameters_imports[key]]["m_id"]["m_buffer"]] = sampler_state_objs[parameters_samplerstate[key + "S"]]
 			elif (key + "Sampler") in parameters_samplerstate:
-				texture_fullpath_to_sampler[asset_reference_import_objs[parameters_imports[key]]["m_id"]] = sampler_state_objs[parameters_samplerstate[key + "Sampler"]]
+				texture_fullpath_to_sampler[asset_reference_import_objs[parameters_imports[key]]["m_id"]["m_buffer"]] = sampler_state_objs[parameters_samplerstate[key + "Sampler"]]
 
 	wrap_map = {
 		0 : 1, # CLAMP_TO_EDGE
@@ -385,7 +385,8 @@ def save_unity_mat(config_struct):
 	effectvariant_fullpath_to_switches = {}
 	for v in asset_reference_import_objs:
 		if v["m_targetAssetType"] == "PTexture2D":
-			texture2d_basename = os.path.basename(v["m_id"]).lower()
+			texture2d_name = v["m_id"]["m_buffer"]
+			texture2d_basename = os.path.basename(texture2d_name).lower()
 			is_transparency_enabled = True
 			if texture2d_basename in basename_to_path_texture_json:
 				import json
@@ -400,23 +401,23 @@ def save_unity_mat(config_struct):
 						texture2d_obj_format = texture2d_obj["m_format"]
 						# Known formats: LA8, L8, ARGB8, ARGB8_SRGB, RGBA8, RGB565, ARGB4444, BC5, BC7, DXT1, DXT3, DXT5
 						no_transparency_formats = ["L8", "RGB565", "BC5", "DXT1"]
-						debug_log("Texture format for " + v["m_id"] + " is " + texture2d_obj_format)
+						debug_log("Texture format for " + texture2d_name + " is " + texture2d_obj_format)
 						if texture2d_obj_format in no_transparency_formats:
 							is_transparency_enabled = False
 			else:
-				debug_log("Texture file not found for " + v["m_id"])
-			basename_noext = os.path.basename(v["m_id"]).split(".", 1)[0].lower()
+				debug_log("Texture file not found for " + texture2d_name)
+			basename_noext = os.path.basename(texture2d_name).split(".", 1)[0].lower()
 			found_texture_path = None
 			if basename_noext + ".png" in basename_to_guid_texture:
 				found_texture_path = basename_noext + ".png"
 			elif basename_noext + ".dds" in basename_to_guid_texture:
 				found_texture_path = basename_noext + ".dds"
 			if found_texture_path is not None:
-				texture_fullpath_to_guid[v["m_id"]] = basename_to_guid_texture[found_texture_path]
+				texture_fullpath_to_guid[texture2d_name] = basename_to_guid_texture[found_texture_path]
 				meta_path = basename_to_projectpath_texture[found_texture_path] + ".meta"
-				debug_log("Handling texture " + str(v["m_id"]))
-				if v["m_id"] in texture_fullpath_to_sampler:
-					samplerstate = texture_fullpath_to_sampler[v["m_id"]]
+				debug_log("Handling texture " + str(texture2d_name))
+				if texture2d_name in texture_fullpath_to_sampler:
+					samplerstate = texture_fullpath_to_sampler[texture2d_name]
 					wrapS = 0
 					wrapT = 0
 					filterMode = 2
@@ -490,9 +491,10 @@ def save_unity_mat(config_struct):
 				else:
 					debug_log("Sampler state not found")
 			else:
-				debug_log("Texture for " + str(v["m_id"]) + " not found")
+				debug_log("Texture for " + str(texture2d_name) + " not found")
 		elif v["m_targetAssetType"] == "PEffectVariant":
-			effectvariant_basename = os.path.basename(v["m_id"]).lower()
+			effectvariant_name = v["m_id"]["m_buffer"]
+			effectvariant_basename = os.path.basename(effectvariant_name).lower()
 			if effectvariant_basename in basename_to_path_effect_json:
 				import json
 				effect_structure = None
@@ -508,16 +510,16 @@ def save_unity_mat(config_struct):
 						for vv in sorted(switches_dict.keys()):
 							if switches_dict[vv] == "1":
 								effect_switches_list.append(vv)
-				effectvariant_fullpath_to_switches[v["m_id"]] = effect_switches_list
+				effectvariant_fullpath_to_switches[effectvariant_name] = effect_switches_list
 			else:
-				debug_log("Effect variant file not found for " + v["m_id"])
+				debug_log("Effect variant file not found for " + effectvariant_name)
 
 	material_name_to_guid = {}
 	for v in material_objs:
 		effectvariant_dict = None
 		shader_keywords_list = []
 		if v["m_effectVariantIndex"] != None:
-			effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]
+			effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]["m_buffer"]
 			if effect_variant_path in effectvariant_fullpath_to_switches:
 				shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path]
 
@@ -674,13 +676,13 @@ def save_unity_mat(config_struct):
 							possible_material_colors[line[6:colon_pos]] = [component[2:] for component in line[colon_pos + 2:][1:-1].replace(" ", "").split(",")]
 
 			if config_struct["save_material_configuration_to_unity_metadata_apply_shader_parameter_configuration"]:
-				parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitionsObjectReferencesAssetReferenceImportIndexes"]
+				parameters_for_textures = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitions_object_references_asset_reference_import_indexes"]
 				for key in sorted(parameters_for_textures.keys()):
 					transformed_parameter_name = "_" + key
 					if key == "DiffuseMapSampler":
 						transformed_parameter_name = "_MainTex"
 					debug_log("Handling shader parameter  " + key + "; transformed " + transformed_parameter_name)
-					parameter_value = asset_reference_import_objs[parameters_for_textures[key]]["m_id"]
+					parameter_value = asset_reference_import_objs[parameters_for_textures[key]]["m_id"]["m_buffer"]
 					if (len(shader_parameter_filter) == 0) or (transformed_parameter_name in shader_parameter_filter):
 						if type(parameter_value) is str:
 							if parameter_value in texture_fullpath_to_guid:
