@@ -1172,6 +1172,7 @@ def standalone_main():
 	parser = argparse.ArgumentParser(
 		description='Utility to insert materials from ED8 into Unity prefabs automatically.',
 		usage='Use "%(prog)s --help" for more information.',
+		fromfile_prefix_chars='@',
 		formatter_class=argparse.RawTextHelpFormatter)
 	parser.add_argument("input_file",
 		type=str, 
