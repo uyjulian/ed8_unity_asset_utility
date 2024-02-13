@@ -533,7 +533,7 @@ def save_unity_mat(config_struct):
 		if v["m_effectVariantIndex"] != None:
 			effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]["m_buffer"]
 			if effect_variant_path in effectvariant_fullpath_to_switches:
-				shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path]
+				shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path][:]
 
 		def shader_keyword_has(s):
 			return (s in shader_keywords_list)
