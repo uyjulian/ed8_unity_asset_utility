@@ -528,65 +528,26 @@ def save_unity_mat(config_struct):
 
 	material_name_to_guid = {}
 	for v in material_objs:
-		effectvariant_dict = None
-		shader_keywords_list = []
-		if v["m_effectVariantIndex"] != None:
-			effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]["m_buffer"]
-			if effect_variant_path in effectvariant_fullpath_to_switches:
-				shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path][:]
-
-		def shader_keyword_has(s):
-			return (s in shader_keywords_list)
-		def shader_keyword_add(s):
-			if s != "":
-				if not shader_keyword_has(s):
-					shader_keywords_list.append(s)
-		def shader_keyword_remove(s):
-			if shader_keyword_has(s):
-				shader_keywords_list.remove(s)
-		shader_fn = ""
-		if shader_keyword_has("USE_OUTLINE"):
-			if shader_keyword_has("ALPHA_TESTING_ENABLED"):
-				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Outline)"]
-			elif shader_keyword_has("ALPHA_BLENDING_ENABLED"):
-				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Outline)"]
-			else:
-				shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Outline)"]
-		else:
-			if (shader_keyword_has("ALPHA_TESTING_ENABLED")) and (shader_keyword_has("ALPHA_BLENDING_ENABLED")):
-				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
-				else:
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
-			elif shader_keyword_has("ALPHA_TESTING_ENABLED"):
-				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Grabpass)"]
-				else:
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout"]
-			elif shader_keyword_has("ALPHA_BLENDING_ENABLED"):
-				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
-				else:
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
-			else:
-				if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Grabpass)"]
-				else:
-					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque"]
 		debug_log("Handling material " + v["mu_name"] + " (" + v["mu_materialname"] + ")")
-		shader_str = "{fileID: 0}"
-		shader_fn_transformed = shader_fn.lower()
-		if shader_fn_transformed != "":
-			if shader_fn_transformed in basename_to_guid_shader:
-				shader_str = "{fileID: 4800000, guid: " + basename_to_guid_shader[shader_fn_transformed] + ", type: 3}"
-				debug_log("Setting shader " + shader_fn)
-			else:
-				debug_log("Shader has not been set because it was not found")
-		else:
-			debug_log("Shader has not been set due to unknown keyword configuration")
 
 		matname = (v["mu_materialname"] + ".mat").lower()
 		if (config_struct["save_material_configuration_to_unity_metadata_create_materials"]) or (matname in basename_to_projectpath_mat):
+			shader_keywords_list = []
+			if v["m_effectVariantIndex"] != None:
+				effect_variant_path = asset_reference_import_objs[v["m_effectVariantIndex"]]["m_id"]["m_buffer"]
+				if effect_variant_path in effectvariant_fullpath_to_switches:
+					shader_keywords_list = effectvariant_fullpath_to_switches[effect_variant_path][:]
+
+			def shader_keyword_has(s):
+				return (s in shader_keywords_list)
+			def shader_keyword_add(s):
+				if s != "":
+					if not shader_keyword_has(s):
+						shader_keywords_list.append(s)
+			def shader_keyword_remove(s):
+				if shader_keyword_has(s):
+					shader_keywords_list.remove(s)
+
 			material_name_to_guid[v["mu_materialname"]] = get_guid_for_path(matname, config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
 			material_fullpath = basename_to_projectpath_mat[matname]
 			material_content_rewrite = []
@@ -614,7 +575,7 @@ def save_unity_mat(config_struct):
 			add_material_root_attribute("m_PrefabInstance", "{fileID: 0}")
 			add_material_root_attribute("m_PrefabAsset", "{fileID: 0}")
 			add_material_root_attribute("m_Name", v["mu_materialname"])
-			add_material_root_attribute("m_Shader", shader_str)
+			add_material_root_attribute("m_Shader", "{fileID: 0}")
 			add_material_root_attribute("m_Parent", "{fileID: 0}")
 			add_material_root_attribute("m_ModifiedSerializedProperties", "0")
 			add_material_root_attribute("m_ValidKeywords", "") # This will be set later
@@ -1098,6 +1059,46 @@ def save_unity_mat(config_struct):
 					if ((not (shader_keyword_has("GLARE_HIGHTPASS_ENABLED"))) and (not (shader_keyword_has("GLARE_MAP_ENABLED"))) and (not (shader_keyword_has("ALPHA_BLENDING_ENABLED")))):
 						shader_keyword_add("RECEIVE_SHADOWS")
 						possible_material_floats["_ReceiveShadowsEnabled"] = 1.0
+
+			shader_fn = ""
+			if shader_keyword_has("USE_OUTLINE"):
+				if shader_keyword_has("ALPHA_TESTING_ENABLED"):
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Outline)"]
+				elif shader_keyword_has("ALPHA_BLENDING_ENABLED"):
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Outline)"]
+				else:
+					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Outline)"]
+			else:
+				if (shader_keyword_has("ALPHA_TESTING_ENABLED")) and (shader_keyword_has("ALPHA_BLENDING_ENABLED")):
+					if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
+					else:
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
+				elif shader_keyword_has("ALPHA_TESTING_ENABLED"):
+					if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout (Grabpass)"]
+					else:
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Cutout"]
+				elif shader_keyword_has("ALPHA_BLENDING_ENABLED"):
+					if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent (Grabpass)"]
+					else:
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Transparent"]
+				else:
+					if (shader_keyword_has("DUDV_MAPPING_ENABLED")) or (shader_keyword_has("WATER_SURFACE_ENABLED")):
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Grabpass)"]
+					else:
+						shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque"]
+			shader_fn_transformed = shader_fn.lower()
+			if shader_fn_transformed != "":
+				if shader_fn_transformed in basename_to_guid_shader:
+					possible_material_root_attributes["m_Shader"] = "{fileID: 4800000, guid: " + basename_to_guid_shader[shader_fn_transformed] + ", type: 3}"
+					debug_log("Setting shader " + shader_fn)
+				else:
+					debug_log("Shader has not been set because it was not found")
+			else:
+				debug_log("Shader has not been set due to unknown keyword configuration")
+
 			if material_version >= 8:
 				possible_material_root_attributes["serializedVersion"] = "8"
 				possible_material_root_attributes["m_ValidKeywords"] = "[]" if (len(shader_keywords_list) == 0) else ""
