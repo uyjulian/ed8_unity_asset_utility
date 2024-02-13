@@ -277,7 +277,7 @@ def save_unity_mat(config_struct):
 		with open(tmp_in_path, "w", encoding="utf-8") as f:
 			f.write(in_contents)
 		do_backup_path(in_path)
-		os.rename(tmp_in_path, in_path)
+		os.replace(tmp_in_path, in_path)
 
 	def get_guid_for_path(in_filename, in_path, in_guid_dict, in_fullpath_dict):
 		import uuid
