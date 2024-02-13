@@ -573,13 +573,18 @@ def save_unity_mat(config_struct):
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque (Grabpass)"]
 				else:
 					shader_fn = shader_name_to_basename["ED8/Cold Steel Shader/Opaque"]
+		debug_log("Handling material " + v["mu_name"] + " (" + v["mu_materialname"] + ")")
 		shader_str = "{fileID: 0}"
 		shader_fn_transformed = shader_fn.lower()
-		if (shader_fn_transformed != "") and (shader_fn_transformed in basename_to_guid_shader):
-			shader_str = "{fileID: 4800000, guid: " + basename_to_guid_shader[shader_fn_transformed] + ", type: 3}"
-			debug_log("Setting shader " + shader_fn)
+		if shader_fn_transformed != "":
+			if shader_fn_transformed in basename_to_guid_shader:
+				shader_str = "{fileID: 4800000, guid: " + basename_to_guid_shader[shader_fn_transformed] + ", type: 3}"
+				debug_log("Setting shader " + shader_fn)
+			else:
+				debug_log("Shader has not been set because it was not found")
+		else:
+			debug_log("Shader has not been set due to unknown keyword configuration")
 
-		debug_log("Handling material " + v["mu_name"] + " (" + v["mu_materialname"] + ")")
 		matname = (v["mu_materialname"] + ".mat").lower()
 		if (config_struct["save_material_configuration_to_unity_metadata_create_materials"]) or (matname in basename_to_projectpath_mat):
 			material_name_to_guid[v["mu_materialname"]] = get_guid_for_path(matname, config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
