@@ -436,6 +436,7 @@ def save_unity_mat(config_struct):
 					filterMode = 2
 					aniso = 8
 					alphaIsTransparency = 1
+					textureFormat_Default = -1
 					textureFormat_Windows = 29 # RGBA Crunched DXT5
 					textureFormat_Android = 52 # ASTC 10x10
 					maxTextureSize = 1024
@@ -484,7 +485,9 @@ def save_unity_mat(config_struct):
 									platformSettings_element_split = split_indentation_level(meta_png_val_platformSettings[ii])
 									meta_png_find_buildTarget = find_indentation_level(platformSettings_element_split, "buildTarget")
 									if meta_png_find_buildTarget != -1:
-										if platformSettings_element_split[meta_png_find_buildTarget][0] in ["buildTarget: DefaultTexturePlatform", "buildTarget: Standalone"]:
+										if platformSettings_element_split[meta_png_find_buildTarget][0] in ["buildTarget: DefaultTexturePlatform"]:
+											meta_png_mutate_platformSettings_element["textureFormat"] = str(textureFormat_Default)
+										elif platformSettings_element_split[meta_png_find_buildTarget][0] in ["buildTarget: Standalone"]:
 											meta_png_mutate_platformSettings_element["textureFormat"] = str(textureFormat_Windows)
 										elif platformSettings_element_split[meta_png_find_buildTarget][0] in ["buildTarget: Android"]:
 											meta_png_mutate_platformSettings_element["textureFormat"] = str(textureFormat_Android)
