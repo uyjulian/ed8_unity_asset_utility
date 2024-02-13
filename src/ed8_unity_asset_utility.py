@@ -434,7 +434,7 @@ def save_unity_mat(config_struct):
 					wrapS = 0
 					wrapT = 0
 					filterMode = 2
-					aniso = 8
+					aniso = 16
 					alphaIsTransparency = 1
 					textureFormat_Default = -1
 					textureFormat_Windows = 29 # RGBA Crunched DXT5
@@ -750,6 +750,22 @@ def save_unity_mat(config_struct):
 
 				if (shader_keyword_has("NOTHING_ENABLED")):
 					possible_material_floats["_NothingEnabled"] = 1.0
+				
+				if (shader_keyword_has("DOUBLE_SIDED")):
+					possible_material_ints["_Culling"] = 0
+				
+				if (shader_keyword_has("CASTS_SHADOWS_ONLY")):
+					possible_material_floats["_CastShadowsOnlyEnabled"] = 1.0
+				elif (shader_keyword_has("CASTS_SHADOWS")):
+					possible_material_floats["_CastShadowsEnabled"] = 1.0
+				else:
+					possible_material_floats["_CastShadowsOnlyEnabled"] = 0.0
+					possible_material_floats["_CastShadowsEnabled"] = 0.0
+
+				if (shader_keyword_has("RECEIVE_SHADOWS")):
+					possible_material_floats["_ReceiveShadowsEnabled"] = 1.0
+				else:
+					possible_material_floats["_ReceiveShadowsEnabled"] = 0.0
 
 				if (shader_keyword_has("WATER_SURFACE_ENABLED")):
 					possible_material_floats["m_start_WaterSurface"] = 1.0
