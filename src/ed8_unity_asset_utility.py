@@ -601,18 +601,16 @@ def save_unity_mat(config_struct):
 				material_content_texenv_last_name = ""
 				paramtype = ""
 				for line in material_existing_content:
-					if line == "    m_TexEnvs:":
+					if line.startswith("    m_TexEnvs:"):
 						paramtype = "TexEnvs"
 						continue
-					elif line == "    m_Ints:":
-						raise Exception("Non-empty ints not yet supported")
-					elif line == "    m_Ints: []":
-						paramtype = ""
+					elif line.startswith("    m_Ints:"):
+						paramtype = "Ints"
 						continue
-					elif line == "    m_Floats:":
+					elif line.startswith("    m_Floats:"):
 						paramtype = "Floats"
 						continue
-					elif line == "    m_Colors:":
+					elif line.startswith("    m_Colors:"):
 						paramtype = "Colors"
 						continue
 					elif line[0:2] == "  " and line[2:3] != " " and (":" in line):
@@ -1155,18 +1153,20 @@ def save_unity_mat(config_struct):
 							material_content_rewrite.append("  - " + keyword)
 					if k == "m_SavedProperties":
 						material_content_rewrite.append("    serializedVersion: 3")
-						material_content_rewrite.append("    m_TexEnvs:")
+						material_content_rewrite.append("    m_TexEnvs:%s" % (" []" if (len(possible_material_texenvs.keys()) == 0) else ""))
 						for item in sorted(possible_material_texenvs.keys()):
 							material_content_rewrite.append("    - %s:" % (item))
 							material_content_rewrite.append("        m_Texture: %s" % (possible_material_texenvs[item]))
 							material_content_rewrite.append("        m_Scale: {x: 1, y: 1}")
 							material_content_rewrite.append("        m_Offset: {x: 0, y: 0}")
-						if material_version >= 8:
-							material_content_rewrite.append("    m_Ints: []")
-						material_content_rewrite.append("    m_Floats:")
+						if (len(possible_material_ints.keys()) > 0) or (material_version >= 8):
+							material_content_rewrite.append("    m_Ints:%s" % (" []" if (len(possible_material_ints.keys()) == 0) else ""))
+							for item in sorted(possible_material_ints.keys()):
+								material_content_rewrite.append("    - %s: %s" % (item, str(possible_material_ints[item])))
+						material_content_rewrite.append("    m_Floats:%s" % (" []" if (len(possible_material_floats.keys()) == 0) else ""))
 						for item in sorted(possible_material_floats.keys()):
 							material_content_rewrite.append("    - %s: %s" % (item, float_as_shortest_str(possible_material_floats[item])))
-						material_content_rewrite.append("    m_Colors:")
+						material_content_rewrite.append("    m_Colors:%s" % (" []" if (len(possible_material_colors.keys()) == 0) else ""))
 						for item in sorted(possible_material_colors.keys()):
 							indexed_item = possible_material_colors[item]
 							material_content_rewrite.append("    - %s: {r: %s, g: %s, b: %s, a: %s}" % (item, float_as_shortest_str(indexed_item[0]), float_as_shortest_str(indexed_item[1]), float_as_shortest_str(indexed_item[2]), float_as_shortest_str(indexed_item[3])))
