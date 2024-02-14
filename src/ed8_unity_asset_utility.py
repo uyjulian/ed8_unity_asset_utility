@@ -752,7 +752,7 @@ def save_unity_mat(config_struct):
 					possible_material_floats["_NothingEnabled"] = 1.0
 				
 				if (shader_keyword_has("DOUBLE_SIDED")):
-					possible_material_ints["_Culling"] = 0
+					possible_material_floats["_Culling"] = 0
 				
 				if (shader_keyword_has("CASTS_SHADOWS_ONLY")):
 					possible_material_floats["_CastShadowsOnlyEnabled"] = 1.0
