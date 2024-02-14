@@ -382,10 +382,12 @@ def save_unity_mat(config_struct):
 		parameters_samplerstate = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitions_object_references_sampler_state_indexes"]
 		parameters_imports = parameter_buffer_objs[v["m_parameterBufferIndex"]]["mu_tweakableShaderParameterDefinitions_object_references_asset_reference_import_indexes"]
 		for key in sorted(parameters_imports.keys()):
+			sampler_state_obj = {}
 			if (key + "S") in parameters_samplerstate:
-				texture_fullpath_to_sampler[asset_reference_import_objs[parameters_imports[key]]["m_id"]["m_buffer"]] = sampler_state_objs[parameters_samplerstate[key + "S"]]
+				sampler_state_obj = sampler_state_objs[parameters_samplerstate[key + "S"]]
 			elif (key + "Sampler") in parameters_samplerstate:
-				texture_fullpath_to_sampler[asset_reference_import_objs[parameters_imports[key]]["m_id"]["m_buffer"]] = sampler_state_objs[parameters_samplerstate[key + "Sampler"]]
+				sampler_state_obj = sampler_state_objs[parameters_samplerstate[key + "Sampler"]]
+			texture_fullpath_to_sampler[asset_reference_import_objs[parameters_imports[key]]["m_id"]["m_buffer"]] = sampler_state_obj
 
 	wrap_map = {
 		0 : 1, # CLAMP_TO_EDGE
@@ -397,40 +399,43 @@ def save_unity_mat(config_struct):
 	texture_fullpath_to_guid = {}
 	effectvariant_fullpath_to_switches = {}
 	for v in asset_reference_import_objs:
-		if v["m_targetAssetType"] == "PTexture2D":
-			texture2d_name = v["m_id"]["m_buffer"]
-			texture2d_basename = os.path.basename(texture2d_name).lower()
+		if v["m_targetAssetType"] in ["PTexture2D", "PTextureCubeMap"]:
+			texture_name = v["m_id"]["m_buffer"]
+			texture_basename = os.path.basename(texture_name).lower()
+			is_cubemap = v["m_targetAssetType"] == "PTextureCubeMap"
 			is_transparency_enabled = True
-			if texture2d_basename in basename_to_path_texture_json:
+			if texture_basename in basename_to_path_texture_json:
 				import json
 				texture_structure = None
-				with open(basename_to_path_texture_json[texture2d_basename], "r") as f:
+				with open(basename_to_path_texture_json[texture_basename], "r") as f:
 					texture_structure = json.load(f)
 				effect_switches_list = []
-				texture2d_objs = texture_structure["texture2d_list"]
-				if len(texture2d_objs) > 0:
-					texture2d_obj = texture2d_objs[0]
-					if "m_format" in texture2d_obj:
-						texture2d_obj_format = texture2d_obj["m_format"]
+				texture_objs = texture_structure["texture2d_list"]
+				if len(texture_objs) == 0:
+					texture_objs = texture_structure["texturecubemap_list"]
+				if len(texture_objs) > 0:
+					texture_obj = texture_objs[0]
+					if "m_format" in texture_obj:
+						texture_obj_format = texture_obj["m_format"]
 						# Known formats: LA8, L8, ARGB8, ARGB8_SRGB, RGBA8, RGB565, ARGB4444, BC5, BC7, DXT1, DXT3, DXT5
 						no_transparency_formats = ["L8", "RGB565", "BC5", "DXT1"]
-						debug_log("Texture format for " + texture2d_name + " is " + texture2d_obj_format)
-						if texture2d_obj_format in no_transparency_formats:
+						debug_log("Texture format for " + texture_name + " is " + texture_obj_format)
+						if texture_obj_format in no_transparency_formats:
 							is_transparency_enabled = False
 			else:
-				debug_log("Texture file not found for " + texture2d_name)
-			basename_noext = os.path.basename(texture2d_name).split(".", 1)[0].lower()
+				debug_log("Texture file not found for " + texture_name)
+			basename_noext = os.path.basename(texture_name).split(".", 1)[0].lower()
 			found_texture_path = None
 			if basename_noext + ".png" in basename_to_guid_texture:
 				found_texture_path = basename_noext + ".png"
 			elif basename_noext + ".dds" in basename_to_guid_texture:
 				found_texture_path = basename_noext + ".dds"
 			if found_texture_path is not None:
-				texture_fullpath_to_guid[texture2d_name] = basename_to_guid_texture[found_texture_path]
+				texture_fullpath_to_guid[texture_name] = basename_to_guid_texture[found_texture_path]
 				meta_path = basename_to_projectpath_texture[found_texture_path] + ".meta"
-				debug_log("Handling texture " + str(texture2d_name))
-				if texture2d_name in texture_fullpath_to_sampler:
-					samplerstate = texture_fullpath_to_sampler[texture2d_name]
+				debug_log("Handling texture " + str(texture_name))
+				if texture_name in texture_fullpath_to_sampler:
+					samplerstate = texture_fullpath_to_sampler[texture_name]
 					wrapS = 0
 					wrapT = 0
 					filterMode = 2
@@ -443,14 +448,21 @@ def save_unity_mat(config_struct):
 					textureCompression = 0
 					compressionQuality = 100
 					crunchedCompression = 0
+					borderMipMap = 0
+					seamlessCubemap = 0
+					textureShape = 1
+					if is_cubemap:
+						borderMipMap = 1
+						seamlessCubemap = 1
+						textureShape = 2
 					if not is_transparency_enabled:
 						textureFormat_Windows = 28 # RGB Crunched DXT1
 					if config_struct["save_material_configuration_to_unity_metadata_compress_textures"]:
 						textureCompression = 1
 						crunchedCompression = 1
-					if samplerstate["m_wrapS"] in wrap_map:
+					if ("m_wrapS" in samplerstate) and (samplerstate["m_wrapS"] in wrap_map):
 						wrapS = wrap_map[samplerstate["m_wrapS"]]
-					if samplerstate["m_wrapT"] in wrap_map:
+					if ("m_wrapT" in samplerstate) and (samplerstate["m_wrapT"] in wrap_map):
 						wrapT = wrap_map[samplerstate["m_wrapT"]]
 					texture_changed = False
 					meta_png_content = ""
@@ -461,12 +473,17 @@ def save_unity_mat(config_struct):
 					if meta_png_find_TextureImporter != -1:
 						meta_png_split_TextureImporter = split_indentation_level(meta_png_split_root[meta_png_find_TextureImporter][1])
 						meta_png_mutate_TextureImporter = {
+							"mipmaps" : {
+								"borderMipMap" : str(borderMipMap),
+							},
 							"textureSettings" : {
 								"filterMode" : str(filterMode),
 								"aniso" : str(aniso),
 								"wrapU" : str(wrapS),
 								"wrapV" : str(wrapT),
 							},
+							"seamlessCubemap" : str(seamlessCubemap),
+							"textureShape" : str(textureShape),
 							"alphaIsTransparency" : str(alphaIsTransparency),
 							"compressionQuality" : str(compressionQuality),
 						}
@@ -507,7 +524,7 @@ def save_unity_mat(config_struct):
 				else:
 					debug_log("Sampler state not found")
 			else:
-				debug_log("Texture for " + str(texture2d_name) + " not found")
+				debug_log("Texture for " + str(texture_name) + " not found")
 		elif v["m_targetAssetType"] == "PEffectVariant":
 			effectvariant_name = v["m_id"]["m_buffer"]
 			effectvariant_basename = os.path.basename(effectvariant_name).lower()
