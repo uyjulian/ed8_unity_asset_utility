@@ -433,7 +433,7 @@ def save_unity_mat(config_struct):
 			if found_texture_path is not None:
 				texture_fullpath_to_guid[texture_name] = basename_to_guid_texture[found_texture_path]
 				meta_path = basename_to_projectpath_texture[found_texture_path] + ".meta"
-				debug_log("Handling texture " + str(texture_name))
+				debug_log("Handling texture " + str(texture_name) + (" as cubemap" if is_cubemap else ""))
 				if texture_name in texture_fullpath_to_sampler:
 					samplerstate = texture_fullpath_to_sampler[texture_name]
 					wrapS = 0
@@ -508,8 +508,12 @@ def save_unity_mat(config_struct):
 											meta_png_mutate_platformSettings_element["textureFormat"] = str(textureFormat_Windows)
 										elif platformSettings_element_split[meta_png_find_buildTarget][0] in ["buildTarget: Android"]:
 											meta_png_mutate_platformSettings_element["textureFormat"] = str(textureFormat_Android)
+									else:
+										debug_log("buildTarget element for index " + str(ii) + " not found")
 									mutate_indentation_level(platformSettings_element_split, meta_png_mutate_platformSettings_element)
 									meta_png_val_platformSettings[ii] = join_indentation_level(platformSettings_element_split)
+						else:
+							debug_log("platformSettings element not found")
 
 						meta_png_split_root[meta_png_find_TextureImporter][1] = join_indentation_level(meta_png_split_TextureImporter)
 					else:
