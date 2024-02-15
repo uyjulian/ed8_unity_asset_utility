@@ -396,7 +396,8 @@ def save_unity_mat(config_struct):
 		3 : 1, # CLAMP_TO_EDGE
 		4 : 2, # MIRROR
 	}
-	texture_fullpath_to_guid = {}
+	texture2d_fullpath_to_guid = {}
+	cubemap_fullpath_to_guid = {}
 	effectvariant_fullpath_to_switches = {}
 	for v in asset_reference_import_objs:
 		if v["m_targetAssetType"] in ["PTexture2D", "PTextureCubeMap"]:
@@ -431,7 +432,10 @@ def save_unity_mat(config_struct):
 			elif basename_noext + ".dds" in basename_to_guid_texture:
 				found_texture_path = basename_noext + ".dds"
 			if found_texture_path is not None:
-				texture_fullpath_to_guid[texture_name] = basename_to_guid_texture[found_texture_path]
+				if is_cubemap:
+					cubemap_fullpath_to_guid[texture_name] = basename_to_guid_texture[found_texture_path]
+				else:
+					texture2d_fullpath_to_guid[texture_name] = basename_to_guid_texture[found_texture_path]
 				meta_path = basename_to_projectpath_texture[found_texture_path] + ".meta"
 				debug_log("Handling texture " + str(texture_name) + (" as cubemap" if is_cubemap else ""))
 				if texture_name in texture_fullpath_to_sampler:
@@ -690,11 +694,15 @@ def save_unity_mat(config_struct):
 					parameter_value = asset_reference_import_objs[parameters_for_textures[key]]["m_id"]["m_buffer"]
 					if (len(shader_parameter_filter) == 0) or (transformed_parameter_name in shader_parameter_filter):
 						if type(parameter_value) is str:
-							if parameter_value in texture_fullpath_to_guid:
-								possible_material_texenvs[transformed_parameter_name] = R"{fileID: 2800000, guid: " + texture_fullpath_to_guid[parameter_value] + ", type: 3}"
+							if parameter_value in texture2d_fullpath_to_guid:
+								possible_material_texenvs[transformed_parameter_name] = R"{fileID: 2800000, guid: " + texture2d_fullpath_to_guid[parameter_value] + ", type: 3}"
+								debug_log("Mapped Texture2D " + key + " in shader parameters")
+							elif parameter_value in cubemap_fullpath_to_guid:
+								possible_material_texenvs[transformed_parameter_name] = R"{fileID: 8900000, guid: " + cubemap_fullpath_to_guid[parameter_value] + ", type: 3}"
+								debug_log("Mapped Cubemap " + key + " in shader parameters")
 							else:
 								possible_material_texenvs[transformed_parameter_name] = R"{fileID: 0}"
-								if len(texture_fullpath_to_guid) > 0:
+								if (len(texture2d_fullpath_to_guid) > 0) or (len(cubemap_fullpath_to_guid) > 0):
 									debug_log("Texture is not found (" + parameter_value + ")")
 								else:
 									debug_log("Texture is not mapped due to no texture .meta files found")
