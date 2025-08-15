@@ -179,6 +179,19 @@ def save_unity_mat(config_struct):
 	asset_reference_import_objs = in_structure["asset_reference_imports"]
 	sampler_state_objs = in_structure["sampler_states"]
 
+	meta_guid_cache = {}
+
+	in_meta_cache_filename = config_struct["save_material_configuration_to_unity_metadata_meta_cache_path"]
+	if in_meta_cache_filename != "":
+		if os.path.isfile(in_meta_cache_filename):
+			with open(in_meta_cache_filename, "r", encoding="utf-8") as f:
+				for line in f:
+					splt = line.rstrip("\r\n").split("\t", maxsplit=1)
+					if len(splt) >= 2:
+						meta_guid_cache[splt[0]] = splt[1]
+		else:
+			debug_log("Cache path specified but not found")
+
 	def readdir_to_basename_fullpath_dict(in_path, out_fullpath_dict, file_ext=None):
 		import pathlib
 		if in_path != "":
@@ -197,24 +210,27 @@ def save_unity_mat(config_struct):
 			in_path_pathobj = pathlib.Path(in_path)
 			for file in sorted(in_path_pathobj.glob('**/*')):
 				if (file.name.endswith(".meta")) and (not file.name.startswith("._")):
-					meta_contents = []
-					with open(file, "r", encoding="utf-8") as f:
-						meta_contents = f.read().split("\n")
 					guid = ""
-					for line in meta_contents:
-						if line.startswith("guid: "):
-							guid = line[6:]
-							break
+					if str(file) in meta_guid_cache:
+						guid = meta_guid_cache[str(file)]
+					else:
+						meta_contents = []
+						with open(file, "r", encoding="utf-8") as f:
+							meta_contents = f.read().split("\n")
+						for line in meta_contents:
+							if line.startswith("guid: "):
+								guid = line[6:]
+								break
+					debug_log(("Cached " if (str(file) in meta_guid_cache) else " ") + "GUID for " + str(file) + ": " + guid)
 					if guid != "":
 						out_guid_dict[os.path.basename(file).lower()[:-5]] = guid
 						out_fullpath_dict[os.path.basename(file).lower()[:-5]] = str(file)[:-5]
-					debug_log("GUID for " + str(file) + ": " + guid)
+						meta_guid_cache[str(file)] = guid
 
 	basename_to_guid_mat = {}
 	basename_to_projectpath_mat = {}
 	
 	readdir_meta_to_guid_and_fullpath(config_struct["save_material_configuration_to_unity_metadata_path"], basename_to_guid_mat, basename_to_projectpath_mat)
-
 
 	basename_to_guid_texture = {}
 	basename_to_projectpath_texture = {}
@@ -242,6 +258,11 @@ def save_unity_mat(config_struct):
 		basename_to_guid_shader = {}
 		basename_to_projectpath_shader = {}
 		readdir_meta_to_guid_and_fullpath(project_shader_path, basename_to_guid_shader, basename_to_projectpath_shader)
+
+	if in_meta_cache_filename != "" and config_struct["save_material_configuration_to_unity_metadata_meta_cache_writeback"]:
+		with open(in_meta_cache_filename, "w", encoding="utf-8") as f:
+			for key in sorted(meta_guid_cache.keys()):
+				f.write(key + "\t" + meta_guid_cache[key] + "\n")
 
 	basename_to_path_inf = {}
 	readdir_to_basename_fullpath_dict(config_struct["save_material_configuration_to_unity_metadata_inf_path"], basename_to_path_inf, ".inf")
@@ -1375,6 +1396,21 @@ def add_common_arguments(parser):
 			Not affected by the --dry-run command line argument.
 		''')
 		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-meta-cache-path",
+		type=str,
+		default="",
+		help=textwrap.dedent('''\
+			Set this to a path to a .tsv file storing the listing of each GUID to path name.
+			If an entry exists in the file, it is used instead of reading the .meta file.
+		''')
+		)
+	parser.add_argument("--save-material-configuration-to-unity-metadata-meta-cache-writeback",
+		type=str,
+		default=str(True),
+		help=textwrap.dedent('''\
+			Write the meta cache .tsv file with updated changes.
+		''')
+		)
 	parser.add_argument("--save-material-configuration-to-unity-metadata-create-materials",
 		type=str,
 		default=str(True),
@@ -1447,6 +1483,8 @@ def handle_common_arguments(args_namespace, config_struct):
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_effect_json_path", args_namespace.save_material_configuration_to_unity_metadata_effect_json_path)
 	set_path(config_struct, "save_material_configuration_to_unity_metadata_texture_json_path", args_namespace.save_material_configuration_to_unity_metadata_texture_json_path)
 	config_struct["save_material_configuration_to_unity_metadata_debug"] = args_namespace.save_material_configuration_to_unity_metadata_debug.lower() == "true"
+	config_struct["save_material_configuration_to_unity_metadata_meta_cache_path"] = args_namespace.save_material_configuration_to_unity_metadata_meta_cache_path
+	config_struct["save_material_configuration_to_unity_metadata_meta_cache_writeback"] = args_namespace.save_material_configuration_to_unity_metadata_meta_cache_writeback.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_create_materials"] = args_namespace.save_material_configuration_to_unity_metadata_create_materials.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_compress_textures"] = args_namespace.save_material_configuration_to_unity_metadata_compress_textures.lower() == "true"
 	config_struct["save_material_configuration_to_unity_metadata_apply_previous_configuration"] = args_namespace.save_material_configuration_to_unity_metadata_apply_previous_configuration.lower() == "true"
